@@ -1,0 +1,8 @@
+{
+  "name": "lorekeeper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Research-grounded content studio for educational creators",
+  "engines": { "node": ">=20" }
+}

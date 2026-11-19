@@ -1,0 +1,6 @@
+{
+  "functions": {
+    "api/ideas.js": { "maxDuration": 300 },
+    "api/remix.js": { "maxDuration": 300 }
+  }
+}
