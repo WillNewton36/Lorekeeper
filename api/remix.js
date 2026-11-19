@@ -1,4 +1,4 @@
-import { runWithSearch, extractJson, checkClaims, rateLimited, clip, sendError, MODEL } from './_lib.js';
+import { runWithSearch, extractJson, checkClaims, rateLimited, clip, sendError, openStream, readBody, MODEL } from './_lib.js';
 
 const SYSTEM = `You are Lorekeeper's Remix tool. A creator has seen another creator's post they admire and wants to learn from it WITHOUT copying it.
 
@@ -24,12 +24,11 @@ Reply with ONLY a JSON object wrapped in <result></result> tags, matching exactl
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return sendError(res, 405, 'Use POST.');
-  if (rateLimited(req)) return sendError(res, 429, 'Too many requests from this connection. Try again in an hour.');
+  if (rateLimited(req)) return sendError(res, 429, 'You have run a lot of research this hour. Try again in a little while.');
 
-  const { profile = {}, reference = {} } = req.body || {};
+  const { profile = {}, reference = {} } = await readBody(req);
   const description = clip(reference.description, 4000);
-  if (!description) return sendError(res, 400, 'Describe the reference post you want to learn from.');
-
+  if (!description) return sendError(res, 400, 'Describe the post you want to learn from.');
   const user = `MY PROFILE
 Niche: ${clip(profile.niche, 300) || '(not given)'}
 Voice: ${clip(profile.voice, 600) || '(not given)'}
@@ -45,17 +44,24 @@ What I liked about it: ${clip(reference.liked, 800) || '(not given)'}
 
 Break it down and give me one original idea in my voice.`;
 
+  const send = openStream(res);
+  send({ type: 'stage', label: 'Breaking down the reference post' });
   try {
-    const { queries, retrieved, text, usage } = await runWithSearch({ system: SYSTEM, user, maxSearches: 3, maxTokens: 5000 });
+    const { queries, retrieved, text, usage } = await runWithSearch({ system: SYSTEM, user, maxSearches: 3, maxTokens: 5000, onEvent: send });
+    send({ type: 'stage', label: 'Checking every source against the search results' });
     const out = extractJson(text);
-    res.status(200).json({
-      ...out,
-      claims: checkClaims(out.claims, retrieved),
-      reference: { creator: clip(reference.creator, 120), link: clip(reference.link, 400) },
-      research: { queries, sources: [...retrieved.values()] },
-      meta: { model: MODEL, usage, generated_at: new Date().toISOString() },
+    send({
+      type: 'done',
+      data: {
+        ...out,
+        claims: checkClaims(out.claims, retrieved),
+        reference: { creator: clip(reference.creator, 120), link: clip(reference.link, 400) },
+        research: { queries, sources: [...retrieved.values()] },
+        meta: { model: MODEL, usage, generated_at: new Date().toISOString() },
+      },
     });
   } catch (err) {
-    sendError(res, 500, err.message || 'Something went wrong.');
+    send({ type: 'error', message: err.message || 'Something went wrong. Run it again.' });
   }
+  res.end();
 }

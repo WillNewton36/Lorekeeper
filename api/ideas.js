@@ -1,4 +1,4 @@
-import { runWithSearch, extractJson, checkClaims, rateLimited, clip, sendError, MODEL } from './_lib.js';
+import { runWithSearch, extractJson, checkClaims, rateLimited, clip, sendError, openStream, readBody, MODEL } from './_lib.js';
 
 const SYSTEM = `You are Lorekeeper, a research-grounded content strategist for educational short-form creators (philosophy, psychology, history, science and similar niches).
 
@@ -11,7 +11,8 @@ Rules you must follow:
 4. FIT THE BRAND. Ideas must match the creator's voice, pillars and audience, and respect their "avoid" list. Each idea must say why it fits, referring to the profile or past posts.
 5. HONESTY OVER VIRALITY. Do not suggest hooks that misrepresent research or overstate findings. For each idea, name the main accuracy risk (e.g. oversimplifying a study, a misattributed quote, a small sample).
 6. ORIGINALITY. Do not reproduce other creators' scripts or signature bits.
-7. SKILL BUILDING. Give one practical craft tip per idea that would make the creator better at making this kind of video.
+7. AVOID REPEATS. Do not pitch ideas the creator has clearly already posted (see their past posts and the 'already planned' list); build on what worked instead.
+8. SKILL BUILDING. Give one practical craft tip per idea that would make the creator better at making this kind of video.
 
 When research is done, reply with ONLY a JSON object wrapped in <result></result> tags, matching exactly:
 {
@@ -27,6 +28,7 @@ When research is done, reply with ONLY a JSON object wrapped in <result></result
       "why_it_fits": "string",
       "claims": [ { "claim": "string", "source_url": "string or null", "source_title": "string or null" } ],
       "accuracy_risk": "string",
+      "effort": "low | medium | high (how hard it is to film and edit)",
       "craft_tip": "string"
     }
   ]
@@ -51,27 +53,38 @@ function formatProfile(p) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return sendError(res, 405, 'Use POST.');
-  if (rateLimited(req)) return sendError(res, 429, 'Too many requests from this connection. Try again in an hour.');
+  if (rateLimited(req)) return sendError(res, 429, 'You have run a lot of research this hour. Try again in a little while.');
 
-  const { profile = {}, focus = '', count = 5 } = req.body || {};
-  if (!clip(profile.niche, 300)) return sendError(res, 400, 'Add your niche in the Brand Profile first.');
+  const { profile = {}, focus = '', count = 5, planned = [] } = await readBody(req);
+  if (!clip(profile.niche, 300)) return sendError(res, 400, 'Add your niche on the Brand page first.');
   const n = Math.min(Math.max(parseInt(count, 10) || 5, 1), 6);
+  const plannedList = (Array.isArray(planned) ? planned : []).slice(0, 30).map((t) => `- ${clip(t, 140)}`).join('\n');
 
   const user = `${formatProfile(profile)}
 
+Already planned or shortlisted (do not repeat):
+${plannedList || '(nothing yet)'}
+
 Request: research my niche and give me ${n} content ideas.${clip(focus, 400) ? ` Focus this batch on: ${clip(focus, 400)}.` : ''}`;
 
+  const send = openStream(res);
+  send({ type: 'stage', label: 'Reading your brand profile and past posts' });
   try {
-    const { queries, retrieved, text, usage } = await runWithSearch({ system: SYSTEM, user, maxSearches: 6 });
+    const { queries, retrieved, text, usage } = await runWithSearch({ system: SYSTEM, user, maxSearches: 6, onEvent: send });
+    send({ type: 'stage', label: 'Checking every source against the search results' });
     const out = extractJson(text);
     const ideas = (out.ideas || []).map((idea) => ({ ...idea, claims: checkClaims(idea.claims, retrieved) }));
-    res.status(200).json({
-      performance_insights: out.performance_insights || [],
-      ideas,
-      research: { queries, sources: [...retrieved.values()] },
-      meta: { model: MODEL, usage, generated_at: new Date().toISOString() },
+    send({
+      type: 'done',
+      data: {
+        performance_insights: out.performance_insights || [],
+        ideas,
+        research: { queries, sources: [...retrieved.values()] },
+        meta: { model: MODEL, usage, generated_at: new Date().toISOString(), focus: clip(focus, 400) },
+      },
     });
   } catch (err) {
-    sendError(res, 500, err.message || 'Something went wrong.');
+    send({ type: 'error', message: err.message || 'Something went wrong. Run it again.' });
   }
+  res.end();
 }

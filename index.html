@@ -3,363 +3,213 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Lorekeeper · Research-grounded content studio</title>
+<title>Lorekeeper: research-grounded content studio</title>
+<meta name="description" content="Lorekeeper turns your brand and real research into original content ideas, with every claim tied to a source you can check." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<style>
-  :root {
-    --paper: #f6f2ea; --card: #fffdf8; --ink: #1f1c17; --muted: #6b645a; --line: #e2dacb;
-    --accent: #7a3e1d; --accent-soft: #f1e3d6; --ok: #2f6b3f; --ok-soft: #e2f0e5;
-    --warn: #8a5a00; --warn-soft: #fbefd2; --bad: #9b2c2c; --bad-soft: #f8e1e1;
-    --radius: 12px;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.55 Inter, system-ui, sans-serif; }
-  h1, h2, h3 { font-family: Fraunces, Georgia, serif; font-weight: 650; line-height: 1.2; margin: 0 0 .4em; }
-  header { padding: 28px 24px 0; max-width: 1040px; margin: 0 auto; }
-  header h1 { font-size: 30px; }
-  header p { color: var(--muted); margin: 0; max-width: 680px; }
-  nav { max-width: 1040px; margin: 20px auto 0; padding: 0 24px; display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-  nav button { background: none; border: 0; padding: 10px 14px; font: inherit; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-  nav button.active { color: var(--ink); border-color: var(--accent); }
-  main { max-width: 1040px; margin: 0 auto; padding: 24px; }
-  section { display: none; } section.active { display: block; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
-  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
-  .full { grid-column: 1 / -1; }
-  label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
-  .hint { color: var(--muted); font-size: 12.5px; font-weight: 400; }
-  input, textarea, select { width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: #fff; color: var(--ink); }
-  textarea { min-height: 80px; resize: vertical; }
-  textarea.tall { min-height: 160px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
-  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  .btn { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer; }
-  .btn:disabled { opacity: .55; cursor: wait; }
-  .btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
-  .btn.small { padding: 6px 11px; font-size: 13px; }
-  .status { color: var(--muted); font-size: 13.5px; }
-  .error { background: var(--bad-soft); color: var(--bad); padding: 10px 14px; border-radius: 8px; margin: 12px 0; }
-  .notice { background: var(--accent-soft); padding: 12px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 16px; }
-  .idea h3 { font-size: 20px; }
-  .meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-  .tag { font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 500; }
-  .hook { font-family: Fraunces, Georgia, serif; font-size: 17px; border-left: 3px solid var(--accent); padding: 4px 0 4px 12px; margin: 10px 0; }
-  .k { font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 12px 0 3px; }
-  ol, ul { margin: 4px 0; padding-left: 20px; }
-  .claim { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; font-size: 14px; }
-  .badge { flex: none; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
-  .b-ok { background: var(--ok-soft); color: var(--ok); }
-  .b-warn { background: var(--warn-soft); color: var(--warn); }
-  .b-bad { background: var(--bad-soft); color: var(--bad); }
-  a { color: var(--accent); }
-  .risk { background: var(--warn-soft); padding: 8px 12px; border-radius: 8px; font-size: 14px; margin-top: 10px; }
-  .decide { border-top: 1px dashed var(--line); margin-top: 14px; padding-top: 12px; }
-  .decided { font-size: 13.5px; font-weight: 600; }
-  details summary { cursor: pointer; font-weight: 600; }
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
-  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  footer { max-width: 1040px; margin: 0 auto; padding: 8px 24px 40px; color: var(--muted); font-size: 12.5px; }
-</style>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/styles.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231c2630'/%3E%3Ctext x='16' y='23' font-family='Georgia' font-size='20' text-anchor='middle' fill='%235fc4a8'%3EL%3C/text%3E%3C/svg%3E" />
 </head>
 <body>
-<header>
-  <h1>Lorekeeper</h1>
-  <p>A research-grounded content studio for educational creators. It learns your brand, researches your niche, and turns what it finds into original ideas, with every claim tied to a source you can check.</p>
-</header>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-name">Lorekeeper</div>
+      <div class="brand-sub">Content studio for educational creators</div>
+    </div>
+    <nav class="nav" aria-label="Main">
+      <button data-view="home" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Studio</button>
+      <button data-view="brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Brand</button>
+      <div class="nav-group">Create</div>
+      <button data-view="research"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>Research ideas</button>
+      <button data-view="remix"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="M4 4l5 5"/></svg>Remix with credit</button>
+      <div class="nav-group">Organise</div>
+      <button data-view="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="11" rx="1"/><rect x="17" y="4" width="4" height="7" rx="1"/></svg>Content plan<span class="count" id="navPlanCount">0</span></button>
+      <button data-view="log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3 6 1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2"/></svg>Decisions</button>
+      <button data-view="how"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>How it works</button>
+    </nav>
+    <div class="engine" id="engine" title="Research engine status"><span class="dot"></span><span id="engineText">Checking research engine</span></div>
+  </aside>
 
-<nav id="tabs">
-  <button data-tab="profile" class="active">1 · Brand profile</button>
-  <button data-tab="ideas">2 · Research ideas</button>
-  <button data-tab="remix">3 · Remix with credit</button>
-  <button data-tab="log">Decision log</button>
-  <button data-tab="about">How it works</button>
-</nav>
-
-<main>
-  <!-- PROFILE -->
-  <section id="profile" class="active">
-    <div class="notice">Your profile is saved in this browser only. Nothing is stored on a server. Lorekeeper does not connect to or scrape any social media account: you choose what to share by pasting it here.</div>
-    <div class="card">
-      <div class="row" style="justify-content:space-between;margin-bottom:12px">
-        <h2 style="margin:0">Who you are as a creator</h2>
-        <div class="row">
-          <button class="btn ghost small" id="loadSample">Load sample profile</button>
-          <button class="btn ghost small" id="clearProfile">Clear</button>
+  <main class="main" id="main">
+    <!-- STUDIO -->
+    <section class="view active" id="view-home" aria-labelledby="h-home">
+      <header class="view-head">
+        <h1 id="h-home">Your studio</h1>
+        <p id="homeLead">Tell Lorekeeper who you are as a creator, and it will research your niche and turn what it finds into ideas you can trust.</p>
+      </header>
+      <div class="home-grid">
+        <div class="panel panel-pad">
+          <div class="panel-head"><h2>Getting set up</h2><span class="subtle" id="setupProgress"></span></div>
+          <ol class="steps" id="steps"></ol>
+          <div id="homeExtra"></div>
+        </div>
+        <div class="stack">
+          <div class="panel panel-pad" id="glancePanel"></div>
+          <div class="panel panel-pad" id="recentPanel"></div>
         </div>
       </div>
-      <div class="grid" id="profileForm">
-        <div><label>Handle</label><input name="handle" placeholder="@yourhandle" /></div>
-        <div><label>Platform(s)</label><input name="platform" placeholder="Instagram Reels, TikTok" /></div>
-        <div class="full"><label>Niche <span class="hint">(required)</span></label><input name="niche" placeholder="e.g. philosophy and psychology for everyday life" /></div>
-        <div><label>Target audience</label><textarea name="audience"></textarea></div>
-        <div><label>Voice and style</label><textarea name="voice"></textarea></div>
-        <div><label>Content pillars</label><textarea name="pillars"></textarea></div>
-        <div><label>Goals</label><textarea name="goals"></textarea></div>
-        <div><label>Avoid</label><textarea name="avoid" placeholder="Topics, tones or tropes you don't want"></textarea></div>
-        <div><label>Creators you admire <span class="hint">(context only)</span></label><textarea name="inspirations"></textarea></div>
-        <div class="full">
-          <label>Past posts and performance <span class="hint">Paste an analytics export (CSV) or one post per line: title or topic, format, views, likes, saves, shares, comments.</span></label>
-          <textarea class="tall" name="posts"></textarea>
+    </section>
+
+    <!-- BRAND -->
+    <section class="view" id="view-brand" aria-labelledby="h-brand">
+      <header class="view-head">
+        <h1 id="h-brand">Your brand</h1>
+        <p>Everything here shapes the ideas you get. It is saved in this browser only, and Lorekeeper never connects to your social accounts.</p>
+      </header>
+      <div class="row" style="margin-bottom:18px">
+        <button class="btn secondary sm" id="loadSample">Use a sample creator</button>
+        <button class="btn quiet sm" id="clearProfile">Clear profile</button>
+        <span class="spacer"></span>
+        <span class="save-state" id="saveState" aria-live="polite"></span>
+      </div>
+      <div class="brand-grid" id="profileForm">
+        <div class="stack">
+          <div class="panel panel-pad">
+            <div class="panel-head"><h2>Identity</h2><span class="subtle" id="completeText"></span></div>
+            <div class="meter" style="margin:-6px 0 18px"><span id="completeBar" style="width:0"></span></div>
+            <div class="two-col">
+              <label class="field"><span class="field-label">Handle</span><input type="text" name="handle" placeholder="@yourhandle" /></label>
+              <label class="field"><span class="field-label">Platforms</span><input type="text" name="platform" placeholder="Instagram Reels, TikTok" /></label>
+            </div>
+            <label class="field" style="margin-top:14px"><span class="field-label">Niche</span><input type="text" name="niche" placeholder="Philosophy and psychology for everyday life" /><span class="field-hint">Required. Be specific: it decides what Lorekeeper researches.</span></label>
+            <label class="field"><span class="field-label">Who you make content for</span><textarea name="audience" placeholder="Age, interests, what they are looking for"></textarea></label>
+            <label class="field"><span class="field-label">Goals</span><textarea name="goals" placeholder="What growth or reputation you are working towards"></textarea></label>
+          </div>
+          <div class="panel panel-pad">
+            <div class="panel-head"><h2>Voice and boundaries</h2></div>
+            <label class="field"><span class="field-label">Voice and style</span><textarea name="voice" placeholder="How you sound and how you film"></textarea></label>
+            <label class="field"><span class="field-label">Content pillars</span><input type="text" name="pillars" placeholder="Separate with semicolons, e.g. Philosophy; Societal commentary; Personal growth" /><span class="field-hint">These become quick focus options on the Research page.</span></label>
+            <label class="field"><span class="field-label">Never suggest</span><textarea name="avoid" placeholder="Topics, tones or tropes that are not you"></textarea></label>
+            <label class="field"><span class="field-label">Creators you admire</span><textarea name="inspirations" placeholder="Used for context only, never copied"></textarea></label>
+          </div>
+        </div>
+        <div class="panel panel-pad">
+          <div class="panel-head"><h2>Post performance</h2><span class="subtle" id="postsCount"></span></div>
+          <label class="field"><span class="field-label">Paste your post data</span><span class="field-hint" style="margin-bottom:6px">A CSV export from your analytics, or one post per line with a header row: topic, format, views, likes, saves, shares, comments.</span><textarea class="data" name="posts" spellcheck="false"></textarea></label>
+          <div id="postsPreview"></div>
         </div>
       </div>
-      <div class="row" style="margin-top:14px"><button class="btn" id="saveProfile">Save profile</button><span class="status" id="saveStatus"></span></div>
-    </div>
-  </section>
+    </section>
 
-  <!-- IDEAS -->
-  <section id="ideas">
-    <div class="card">
-      <h2>Research and generate ideas</h2>
-      <p class="status" style="margin-top:0">Lorekeeper reads your profile, analyses your past posts, searches the web for studies, primary texts and stories in your niche, then proposes ideas. A full run usually takes 30–90 seconds.</p>
-      <div class="grid">
-        <div class="full"><label>Focus for this batch <span class="hint">(optional)</span></label><input id="focus" placeholder="e.g. Stoicism and modern anxiety, or 'more personal growth ideas'" /></div>
-        <div><label>Number of ideas</label><select id="count"><option>3</option><option selected>5</option><option>6</option></select></div>
+    <!-- RESEARCH -->
+    <section class="view" id="view-research" aria-labelledby="h-research">
+      <header class="view-head">
+        <h1 id="h-research">Research ideas</h1>
+        <p>Lorekeeper studies your past posts, searches for studies, primary texts and stories in your niche, then pitches ideas built on what it found.</p>
+      </header>
+      <div class="workspace">
+        <div>
+          <div class="panel panel-pad controls">
+            <div class="focus-row">
+              <label class="field"><span class="field-label">Focus for this batch</span><input type="text" id="focus" placeholder="Optional, e.g. Stoicism and modern anxiety" /></label>
+              <div>
+                <span class="field-label" id="countLabel">Ideas</span>
+                <div class="segmented" role="group" aria-labelledby="countLabel" id="countPicker">
+                  <button type="button" aria-pressed="false" data-n="3">3</button><button type="button" aria-pressed="true" data-n="5">5</button><button type="button" aria-pressed="false" data-n="6">6</button>
+                </div>
+              </div>
+              <button class="btn big" id="runIdeas">Research and pitch ideas</button>
+            </div>
+            <div class="chips" id="focusChips" style="margin-top:12px"></div>
+            <div id="ideasError"></div>
+          </div>
+          <div id="ideasOut"></div>
+        </div>
+        <aside class="trail" aria-label="Research trail"><div class="trail-inner" id="ideasTrail"></div></aside>
       </div>
-      <div class="row" style="margin-top:14px"><button class="btn" id="runIdeas">Research and generate</button><span class="status" id="ideasStatus"></span></div>
-      <div id="ideasError"></div>
-    </div>
-    <div id="ideasOut"></div>
-  </section>
+    </section>
 
-  <!-- REMIX -->
-  <section id="remix">
-    <div class="card">
-      <h2>Learn from another creator, without copying them</h2>
-      <p class="status" style="margin-top:0">Describe a post you admire. Lorekeeper separates the transferable structure from what belongs to that creator, builds an original idea in your voice, and writes a credit line.</p>
-      <div class="grid">
-        <div><label>Creator</label><input id="refCreator" placeholder="@theircreatorhandle" /></div>
-        <div><label>Link</label><input id="refLink" placeholder="https://www.instagram.com/reel/..." /></div>
-        <div class="full"><label>What the post does and says <span class="hint">(required: Lorekeeper only knows what you write here)</span></label><textarea id="refDesc" style="min-height:120px"></textarea></div>
-        <div class="full"><label>What you liked about it</label><textarea id="refLiked"></textarea></div>
+    <!-- REMIX -->
+    <section class="view" id="view-remix" aria-labelledby="h-remix">
+      <header class="view-head">
+        <h1 id="h-remix">Remix with credit</h1>
+        <p>Learn from a post you admire without copying it. Lorekeeper separates the structure you can borrow from what belongs to its creator, then builds an original idea in your voice.</p>
+      </header>
+      <div class="workspace">
+        <div>
+          <div class="panel panel-pad">
+            <div class="two-col">
+              <label class="field"><span class="field-label">Creator</span><input type="text" id="refCreator" placeholder="@creator" /></label>
+              <label class="field"><span class="field-label">Link to the post</span><input type="url" id="refLink" placeholder="https://" /></label>
+            </div>
+            <label class="field" style="margin-top:14px"><span class="field-label">What the post does and says</span><textarea id="refDesc" style="min-height:120px" placeholder="Describe the hook, the argument, the examples and how it is filmed. Lorekeeper only knows what you write here."></textarea></label>
+            <label class="field"><span class="field-label">What you liked about it</span><textarea id="refLiked" placeholder="The part you want to learn from"></textarea></label>
+            <div class="row" style="margin-top:16px"><button class="btn big" id="runRemix">Break it down and remix</button></div>
+            <div id="remixError"></div>
+          </div>
+          <div id="remixOut"></div>
+        </div>
+        <aside class="trail" aria-label="Research trail"><div class="trail-inner" id="remixTrail"></div></aside>
       </div>
-      <div class="row" style="margin-top:14px"><button class="btn" id="runRemix">Break it down and remix</button><span class="status" id="remixStatus"></span></div>
-      <div id="remixError"></div>
-    </div>
-    <div id="remixOut"></div>
-  </section>
+    </section>
 
-  <!-- LOG -->
-  <section id="log">
-    <div class="card">
-      <div class="row" style="justify-content:space-between">
-        <h2 style="margin:0">Decision log</h2>
-        <div class="row"><button class="btn ghost small" id="exportLog">Export CSV</button><button class="btn ghost small" id="clearLog">Clear log</button></div>
+    <!-- PLAN -->
+    <section class="view" id="view-plan" aria-labelledby="h-plan">
+      <header class="view-head">
+        <h1 id="h-plan">Content plan</h1>
+        <p>Ideas you keep land here. Drag them along as you script, film and post, and give each one a date.</p>
+      </header>
+      <div class="row" style="margin-bottom:16px"><span class="spacer"></span><button class="btn secondary sm" id="exportPlan">Export plan as CSV</button></div>
+      <div class="board" id="board"></div>
+    </section>
+
+    <!-- DECISIONS -->
+    <section class="view" id="view-log" aria-labelledby="h-log">
+      <header class="view-head">
+        <h1 id="h-log">Decisions</h1>
+        <p>Every idea you keep or reject, and why. Lorekeeper suggests; you decide. This is the record of that judgement.</p>
+      </header>
+      <div class="panel panel-pad">
+        <div class="panel-head">
+          <div class="segmented" role="group" aria-label="Filter decisions" id="logFilter">
+            <button type="button" aria-pressed="true" data-f="all">All</button><button type="button" aria-pressed="false" data-f="keep">Kept</button><button type="button" aria-pressed="false" data-f="reject">Rejected</button>
+          </div>
+          <div class="row"><button class="btn secondary sm" id="exportLog">Export as CSV</button><button class="btn danger sm" id="clearLog">Clear</button></div>
+        </div>
+        <div id="logOut"></div>
       </div>
-      <p class="status">Every idea you keep or reject is recorded here with your reason. The AI suggests; you decide. This log is the record of that judgement.</p>
-      <div id="logOut"></div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ABOUT -->
-  <section id="about">
-    <div class="card">
-      <h2>How Lorekeeper works</h2>
-      <ol>
-        <li><b>Brand profile.</b> You describe your niche, voice and pillars and paste your own post data. No account connection, no scraping.</li>
-        <li><b>Research.</b> Claude (Anthropic) runs live web searches for substantive material in your niche.</li>
-        <li><b>Generation.</b> Ideas are written to fit your profile and past performance, each with a hook, outline, accuracy risk and craft tip.</li>
-        <li><b>Source check.</b> The server compares every cited URL against the search results actually returned. Anything else is flagged.</li>
-        <li><b>Your decision.</b> You keep or reject each idea with a reason, building a log of your own judgement.</li>
-      </ol>
-      <h3 style="margin-top:18px">What the source badges mean</h3>
-      <div class="claim"><span class="badge b-ok">Source retrieved</span><span>The cited page was actually returned by the search in this run. It still needs reading: a real page can be misread or oversimplified.</span></div>
-      <div class="claim"><span class="badge b-bad">Source not retrieved</span><span>The model cited a URL the search never returned. Treat it as a possible fabrication until you check it yourself.</span></div>
-      <div class="claim"><span class="badge b-warn">Unsourced</span><span>No source given. Verify before posting, or cut it.</span></div>
-      <h3 style="margin-top:18px">Where your judgement stays essential</h3>
-      <ul>
-        <li>Reading the source before stating a study's finding on camera.</li>
-        <li>Deciding whether an idea is genuinely yours, and crediting the creators who inspired it.</li>
-        <li>Choosing depth over engagement when the two conflict.</li>
-      </ul>
-    </div>
-  </section>
-</main>
-<footer>Lorekeeper prototype · Built with Claude · Outputs are suggestions, not facts. Check sources before you post.</footer>
-
-<script>
-const $ = (s, el = document) => el.querySelector(s);
-const $$ = (s, el = document) => [...el.querySelectorAll(s)];
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const safeUrl = (u) => /^https?:\/\//i.test(String(u || '')) ? u : null;
-const store = {
-  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
-
-// ---------- tabs ----------
-$$('#tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
-function showTab(id) {
-  $$('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === id));
-  $$('main section').forEach((s) => s.classList.toggle('active', s.id === id));
-  if (id === 'log') renderLog();
-}
-
-// ---------- profile ----------
-const FIELDS = ['handle', 'platform', 'niche', 'audience', 'voice', 'pillars', 'goals', 'avoid', 'inspirations', 'posts'];
-const SAMPLE = {
-  handle: '@sample_philosophy_creator',
-  platform: 'Instagram Reels',
-  niche: 'Philosophy and psychology applied to everyday life',
-  audience: '18–30 year olds interested in self-improvement who are tired of hustle culture and want ideas with substance',
-  voice: 'Calm, direct and grounded. Talking-head to camera. Uses a story or a thinker to open, then a modern application. No yelling, no hype.',
-  pillars: 'Philosophy (ancient and modern); Societal commentary; Personal growth',
-  goals: 'Grow to 10k followers with a loyal audience that saves and shares; be known for accurate, thoughtful content',
-  avoid: 'Hustle-culture clichés, misquoted philosophers, pop-psych claims without evidence, emotional maturity content',
-  inspirations: 'Educational talking-head creators in philosophy and self-improvement',
-  posts: `SAMPLE DATA: replace with your own
-topic,format,views,likes,saves,shares,comments
-"Why Marcus Aurelius wrote to himself every night",talking-head,48200,3100,910,420,88
-"Seneca on why you're always busy",talking-head,31500,2050,1200,310,64
-"The phone in your pocket and Pascal's sitting quietly",talking-head,12800,760,190,70,31
-"5 Stoic habits for a better morning",listicle,6100,280,60,15,12
-"Nietzsche's amor fati explained",talking-head,22900,1500,640,210,97
-"Why comparison steals your joy (study)",talking-head,9400,520,140,60,40
-"My week without social media",vlog-style,4300,210,25,8,19`,
-};
-function readProfile() { const p = {}; FIELDS.forEach((f) => (p[f] = $(`[name=${f}]`).value)); return p; }
-function writeProfile(p) { FIELDS.forEach((f) => ($(`[name=${f}]`).value = p?.[f] || '')); }
-writeProfile(store.get('lk_profile', {}));
-$('#saveProfile').onclick = () => { store.set('lk_profile', readProfile()); flash('#saveStatus', 'Saved in this browser.'); };
-$('#loadSample').onclick = () => { writeProfile(SAMPLE); store.set('lk_profile', SAMPLE); flash('#saveStatus', 'Sample profile loaded.'); };
-$('#clearProfile').onclick = () => { writeProfile({}); store.set('lk_profile', {}); flash('#saveStatus', 'Cleared.'); };
-$('#profileForm').addEventListener('input', () => store.set('lk_profile', readProfile()));
-function flash(sel, msg) { $(sel).textContent = msg; setTimeout(() => ($(sel).textContent = ''), 2500); }
-
-// ---------- shared request helper ----------
-const STEPS = ['Reading your profile…', 'Analysing past performance…', 'Searching your niche…', 'Reading sources…', 'Drafting ideas…', 'Checking every source…'];
-async function call(path, body, btn, statusSel, errSel) {
-  $(errSel).innerHTML = '';
-  btn.disabled = true;
-  const t0 = Date.now(); let i = 0;
-  const tick = () => { const s = Math.round((Date.now() - t0) / 1000); $(statusSel).innerHTML = `<span class="spinner"></span>${STEPS[Math.min(i, STEPS.length - 1)]} ${s}s`; };
-  tick(); const timer = setInterval(() => { if ((Date.now() - t0) / 1000 > (i + 1) * 9) i++; tick(); }, 500);
-  try {
-    const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-    const data = await r.json().catch(() => ({ error: `Server error (${r.status})` }));
-    if (!r.ok || data.error) throw new Error(data.error || `Server error (${r.status})`);
-    $(statusSel).textContent = `Done in ${Math.round((Date.now() - t0) / 1000)}s · ${data.meta?.usage?.web_search_requests ?? 0} web searches`;
-    return data;
-  } catch (e) {
-    $(errSel).innerHTML = `<div class="error">${esc(e.message)}</div>`;
-    $(statusSel).textContent = '';
-    return null;
-  } finally { clearInterval(timer); btn.disabled = false; }
-}
-
-// ---------- rendering ----------
-const BADGES = {
-  'source-retrieved': ['b-ok', 'Source retrieved'],
-  'source-not-retrieved': ['b-bad', 'Source not retrieved'],
-  unsourced: ['b-warn', 'Unsourced'],
-};
-function claimsHtml(claims) {
-  if (!claims?.length) return '<p class="status">No factual claims.</p>';
-  return claims.map((c) => {
-    const [cls, label] = BADGES[c.status] || BADGES.unsourced;
-    const u = safeUrl(c.source_url);
-    const link = u ? ` <a href="${esc(u)}" target="_blank" rel="noopener">${esc(c.source_title || new URL(u).hostname)}</a>` : '';
-    return `<div class="claim"><span class="badge ${cls}">${label}</span><span>${esc(c.claim)}${link}</span></div>`;
-  }).join('');
-}
-function researchHtml(research) {
-  if (!research) return '';
-  const q = research.queries.map((x) => `<li>${esc(x)}</li>`).join('');
-  const s = research.sources.map((x) => { const u = safeUrl(x.url); return u ? `<li><a href="${esc(u)}" target="_blank" rel="noopener">${esc(x.title || u)}</a>${x.page_age ? ` <span class="hint">· ${esc(x.page_age)}</span>` : ''}</li>` : ''; }).join('');
-  return `<details class="card"><summary>Research trail: ${research.queries.length} searches, ${research.sources.length} sources retrieved</summary>
-    <div class="two" style="margin-top:12px"><div><div class="k">Searches run</div><ol>${q || '<li>None</li>'}</ol></div><div><div class="k">Sources returned</div><ol>${s || '<li>None</li>'}</ol></div></div></details>`;
-}
-function decideHtml(key, title) {
-  const d = store.get('lk_log', []).find((x) => x.key === key);
-  if (d) return `<div class="decide"><span class="decided">${d.decision === 'keep' ? '✓ Kept' : '✕ Rejected'}</span>${d.reason ? ` · <span class="status">${esc(d.reason)}</span>` : ''}</div>`;
-  return `<div class="decide" data-key="${esc(key)}" data-title="${esc(title)}">
-    <div class="row"><input class="reason" placeholder="Your reason (why keep or reject?)" style="flex:1;min-width:200px" />
-    <button class="btn small" data-d="keep">Keep</button><button class="btn ghost small" data-d="reject">Reject</button></div></div>`;
-}
-document.addEventListener('click', (e) => {
-  const b = e.target.closest('.decide button[data-d]'); if (!b) return;
-  const box = b.closest('.decide');
-  const entry = { key: box.dataset.key, title: box.dataset.title, decision: b.dataset.d, reason: $('.reason', box).value.trim(), at: new Date().toISOString() };
-  const log = store.get('lk_log', []); log.push(entry); store.set('lk_log', log);
-  box.outerHTML = decideHtml(entry.key, entry.title);
-});
-
-$('#runIdeas').onclick = async () => {
-  const profile = readProfile(); store.set('lk_profile', profile);
-  if (!profile.niche.trim()) { $('#ideasError').innerHTML = '<div class="error">Add your niche in the Brand Profile tab first (or load the sample).</div>'; return; }
-  const data = await call('/api/ideas', { profile, focus: $('#focus').value, count: $('#count').value }, $('#runIdeas'), '#ideasStatus', '#ideasError');
-  if (!data) return;
-  const stamp = Date.now();
-  const insights = (data.performance_insights || []).map((x) => `<li><b>${esc(x.insight)}</b> <span class="status">${esc(x.evidence)}</span></li>`).join('');
-  const ideas = (data.ideas || []).map((d, i) => `
-    <div class="card idea">
-      <div class="meta"><span class="tag">${esc(d.pillar)}</span><span class="tag">${esc(d.format)}</span></div>
-      <h3>${esc(d.title)}</h3>
-      <div class="hook">“${esc(d.hook)}”</div>
-      <div class="k">Angle</div><div>${esc(d.angle)}</div>
-      <div class="k">Outline</div><ol>${(d.outline || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
-      <div class="k">Why it fits you</div><div>${esc(d.why_it_fits)}</div>
-      <div class="k">Claims and sources</div>${claimsHtml(d.claims)}
-      <div class="risk"><b>Accuracy risk:</b> ${esc(d.accuracy_risk)}</div>
-      <div class="k">Craft tip</div><div>${esc(d.craft_tip)}</div>
-      ${decideHtml(`idea-${stamp}-${i}`, d.title)}
-    </div>`).join('');
-  $('#ideasOut').innerHTML = `
-    <div class="card"><h2>What's working on your page</h2><ul>${insights || '<li>No performance data provided.</li>'}</ul></div>
-    ${ideas}${researchHtml(data.research)}`;
-};
-
-$('#runRemix').onclick = async () => {
-  const reference = { creator: $('#refCreator').value, link: $('#refLink').value, description: $('#refDesc').value, liked: $('#refLiked').value };
-  if (!reference.description.trim()) { $('#remixError').innerHTML = '<div class="error">Describe what the reference post does and says.</div>'; return; }
-  const data = await call('/api/remix', { profile: readProfile(), reference }, $('#runRemix'), '#remixStatus', '#remixError');
-  if (!data) return;
-  const s = data.structure || {}, o = data.original_idea || {}, r = data.similarity_risk || {};
-  const lvl = String(r.level || '').toLowerCase();
-  const rc = lvl === 'low' ? 'b-ok' : lvl === 'high' ? 'b-bad' : 'b-warn';
-  $('#remixOut').innerHTML = `
-    <div class="two">
-      <div class="card"><h3>Transferable structure</h3>
-        <div class="k">Hook pattern</div><div>${esc(s.hook_pattern)}</div>
-        <div class="k">Format</div><div>${esc(s.format)}</div>
-        <div class="k">Pacing</div><div>${esc(s.pacing)}</div>
-        <div class="k">Framing device</div><div>${esc(s.framing_device)}</div>
-        <div class="k">Why it works</div><div>${esc(s.why_it_works)}</div></div>
-      <div class="card"><h3>Theirs, not yours: don't copy</h3><ul>${(data.do_not_copy || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
-    </div>
-    <div class="card idea">
-      <div class="meta"><span class="badge ${rc}">Similarity risk: ${esc(r.level || 'unknown')}</span></div>
-      <h3>${esc(o.title)}</h3>
-      <div class="hook">“${esc(o.hook)}”</div>
-      <div class="k">Angle</div><div>${esc(o.angle)}</div>
-      <div class="k">Outline</div><ol>${(o.outline || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
-      <div class="k">How it differs from the original</div><div>${esc(o.how_it_differs)}</div>
-      <div class="k">Similarity assessment</div><div>${esc(r.reason)}</div>
-      <div class="k">Credit line</div><div class="hook" style="font-size:15px">${esc(data.attribution)}</div>
-      <div class="k">Claims and sources</div>${claimsHtml(data.claims)}
-      ${decideHtml(`remix-${Date.now()}`, o.title)}
-    </div>${researchHtml(data.research)}`;
-};
-
-// ---------- log ----------
-function renderLog() {
-  const log = store.get('lk_log', []);
-  if (!log.length) { $('#logOut').innerHTML = '<p class="status">No decisions yet. Keep or reject ideas to build your log.</p>'; return; }
-  const kept = log.filter((x) => x.decision === 'keep').length;
-  $('#logOut').innerHTML = `<p><b>${kept}</b> kept · <b>${log.length - kept}</b> rejected</p>
-    <table><tr><th>When</th><th>Idea</th><th>Decision</th><th>Reason</th></tr>
-    ${log.slice().reverse().map((x) => `<tr><td>${esc(new Date(x.at).toLocaleString())}</td><td>${esc(x.title)}</td><td>${x.decision === 'keep' ? '✓ Kept' : '✕ Rejected'}</td><td>${esc(x.reason)}</td></tr>`).join('')}</table>`;
-}
-$('#exportLog').onclick = () => {
-  const log = store.get('lk_log', []);
-  const csv = [['when', 'idea', 'decision', 'reason'], ...log.map((x) => [x.at, x.title, x.decision, x.reason])]
-    .map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'lorekeeper-decision-log.csv'; a.click();
-};
-$('#clearLog').onclick = () => { store.set('lk_log', []); renderLog(); };
-</script>
+    <!-- HOW -->
+    <section class="view" id="view-how" aria-labelledby="h-how">
+      <header class="view-head">
+        <h1 id="h-how">How it works</h1>
+        <p>Lorekeeper is built to make your ideas better researched, not to make your decisions for you.</p>
+      </header>
+      <div class="how">
+        <div class="panel panel-pad">
+          <h2 style="margin-bottom:14px">From profile to plan</h2>
+          <ol class="flow">
+            <li><div><strong>You describe your brand</strong><span class="muted">Niche, voice, pillars and your own post data, pasted in. No account connection and no scraping, so you choose exactly what is shared.</span></div></li>
+            <li><div><strong>It researches live</strong><span class="muted">Claude, Anthropic's AI model, runs real web searches for studies, primary texts and stories in your niche. You watch every search in the research trail.</span></div></li>
+            <li><div><strong>It pitches ideas that fit you</strong><span class="muted">Each idea explains why it suits your page, names its main accuracy risk and gives one craft tip.</span></div></li>
+            <li><div><strong>Every source is checked</strong><span class="muted">The server compares each cited link with the pages the search actually returned, and labels any claim it cannot match.</span></div></li>
+            <li><div><strong>You decide</strong><span class="muted">Keep an idea and it joins your content plan. Reject it and you record why. Nothing is posted or scheduled for you.</span></div></li>
+          </ol>
+        </div>
+        <div class="stack">
+          <div class="panel panel-pad legend">
+            <h2>What the source labels mean</h2>
+            <div class="claim"><span class="badge ok">Found in search</span><span>The cited page was returned by the search in this run. Still read it: a real page can be misread or oversimplified.</span></div>
+            <div class="claim"><span class="badge bad">Not found in search</span><span>The AI cited a page the search never returned. Treat it as possibly made up until you check it yourself.</span></div>
+            <div class="claim"><span class="badge warn">No source</span><span>Nothing to check against. Verify it before you say it on camera, or leave it out.</span></div>
+          </div>
+          <div class="panel panel-pad">
+            <h2 style="margin-bottom:8px">Where your judgement stays essential</h2>
+            <ul style="margin:0;padding-left:18px" class="muted">
+              <li>Reading a source before stating its finding on camera.</li>
+              <li>Deciding whether an idea is really yours, and crediting who inspired it.</li>
+              <li>Choosing depth over engagement when the two pull apart.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="/assets/app.js"></script>
 </body>
 </html>
