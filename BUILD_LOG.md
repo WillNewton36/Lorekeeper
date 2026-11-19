@@ -98,3 +98,6 @@ Screenshot review found and fixed three issues: plan card buttons overflowing na
 
 **12:25 · Build · Claude**
 Updated the README; excluded the `dev/` test folder from deployment; committed v2 and pushed to GitHub.
+
+**12:07 · Deploy · Will + Claude**
+First push was refused (Claude GitHub App permission not yet active for the repository). Will confirmed the app was installed; the retry succeeded. v1 and v2 are now on GitHub at `WillNewton36/lorekeeper`.
