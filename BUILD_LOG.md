@@ -101,3 +101,11 @@ Updated the README; excluded the `dev/` test folder from deployment; committed v
 
 **12:07 · Deploy · Will + Claude**
 First push was refused (Claude GitHub App permission not yet active for the repository). Will confirmed the app was installed; the retry succeeded. v1 and v2 are now on GitHub at `WillNewton36/lorekeeper`.
+
+## 23 November 2026: deployment
+
+**14:02 · Deploy · Will**
+Imported the repository into Vercel. Vercel rejected the project name "LoreKeeper" because project names must be lowercase; renamed to `lorekeeper` (affects the web address only, not the app's name).
+
+**14:06 · Deploy · Will**
+Deployed to production on Vercel with `ANTHROPIC_API_KEY` set as an environment variable (the key is stored only in Vercel, never in the code). Build took 8 seconds. The deployment preview showed the Studio page loading correctly.
