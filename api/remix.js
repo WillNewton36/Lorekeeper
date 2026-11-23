@@ -12,7 +12,7 @@ Your job:
 
 You only know what the creator pasted about the reference post; do not pretend to have watched it.
 
-Reply with ONLY a JSON object wrapped in <result></result> tags, matching exactly:
+Do not write any commentary. Reply with ONLY a JSON object wrapped in <result></result> tags, matching exactly:
 {
   "structure": { "hook_pattern": "string", "format": "string", "pacing": "string", "framing_device": "string", "why_it_works": "string" },
   "do_not_copy": ["string"],
@@ -47,7 +47,7 @@ Break it down and give me one original idea in my voice.`;
   const send = openStream(res);
   send({ type: 'stage', label: 'Breaking down the reference post' });
   try {
-    const { queries, retrieved, text, usage } = await runWithSearch({ system: SYSTEM, user, maxSearches: 3, maxTokens: 5000, onEvent: send });
+    const { queries, retrieved, text, usage } = await runWithSearch({ system: SYSTEM, user, maxSearches: 3, maxTokens: 8000, onEvent: send });
     send({ type: 'stage', label: 'Checking every source against the search results' });
     const out = extractJson(text);
     send({

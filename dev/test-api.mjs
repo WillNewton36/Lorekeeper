@@ -55,5 +55,18 @@ await ideas(req({ profile: { niche: 'x' } }), r4);
 assert.equal(r4.events().at(-1).type, 'error');
 console.log('missing key:', r4.events().at(-1).message);
 
+// Same paper, different link: matched by DOI; HTML-escaped search URLs still match
+const { checkClaims, doiOf } = await import('../api/_lib.js');
+const got = new Map([[normalizeUrl('https://scholar.google.com/scholar_lookup?title=X&amp=&author=A&amp=&doi=10.1073/pnas.1706541114&amp=&pmid=1'), { url: 'https://scholar.google.com/scholar_lookup?title=X&amp=&author=A&amp=&doi=10.1073/pnas.1706541114' }],
+  [normalizeUrl('https://www.pnas.org/doi/pdf/10.1073/pnas.1706541114'), { url: 'https://www.pnas.org/doi/pdf/10.1073/pnas.1706541114' }]]);
+const checked = checkClaims([
+  { claim: 'a', source_url: 'https://scholar.google.com/scholar_lookup?title=X&author=Whillans&doi=10.1073/pnas.1706541114' },
+  { claim: 'b', source_url: 'https://doi.org/10.1073/pnas.1706541114' },
+  { claim: 'c', source_url: 'https://doi.org/10.1000/made-up-paper' },
+], got);
+assert.deepEqual(checked.map((c) => c.status), ['source-retrieved', 'source-retrieved', 'source-not-retrieved']);
+assert.equal(doiOf('https://www.pnas.org/doi/pdf/10.1073/pnas.1706541114'), '10.1073/pnas.1706541114');
+console.log('DOI matching: same paper via a different link accepted, made-up DOI still flagged');
+
 assert.equal(normalizeUrl('https://WWW.Example.com/a/?utm_medium=b&id=2#x'), 'example.com/a?id=2');
 console.log('\nAll API tests passed.');

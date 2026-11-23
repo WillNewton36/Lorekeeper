@@ -14,7 +14,7 @@ Rules you must follow:
 7. AVOID REPEATS. Do not pitch ideas the creator has clearly already posted (see their past posts and the 'already planned' list); build on what worked instead.
 8. SKILL BUILDING. Give one practical craft tip per idea that would make the creator better at making this kind of video.
 
-When research is done, reply with ONLY a JSON object wrapped in <result></result> tags, matching exactly:
+When research is done, do not write any commentary. Reply with ONLY a JSON object wrapped in <result></result> tags, matching exactly:
 {
   "performance_insights": [ { "insight": "string", "evidence": "string (which posts show this)" } ],
   "ideas": [
@@ -70,7 +70,7 @@ Request: research my niche and give me ${n} content ideas.${clip(focus, 400) ? `
   const send = openStream(res);
   send({ type: 'stage', label: 'Reading your brand profile and past posts' });
   try {
-    const { queries, retrieved, text, usage } = await runWithSearch({ system: SYSTEM, user, maxSearches: 6, onEvent: send });
+    const { queries, retrieved, text, usage } = await runWithSearch({ system: SYSTEM, user, maxSearches: 6, maxTokens: 16000, onEvent: send });
     send({ type: 'stage', label: 'Checking every source against the search results' });
     const out = extractJson(text);
     const ideas = (out.ideas || []).map((idea) => ({ ...idea, claims: checkClaims(idea.claims, retrieved) }));

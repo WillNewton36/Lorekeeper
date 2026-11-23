@@ -22,9 +22,9 @@ export function clip(value, max) {
 // ---------- URL normalisation so "https://www.x.com/a/?utm_source=y" matches "http://x.com/a" ----------
 export function normalizeUrl(raw) {
   try {
-    const u = new URL(String(raw).trim());
+    const u = new URL(String(raw).trim().replace(/&amp;/g, '&'));
     const host = u.hostname.toLowerCase().replace(/^www\./, '');
-    [...u.searchParams.keys()].forEach((k) => { if (/^utm_|^ref$|^fbclid$|^gclid$/i.test(k)) u.searchParams.delete(k); });
+    [...new Set(u.searchParams.keys())].forEach((k) => { if (!k || /^amp$|^utm_|^ref$|^fbclid$|^gclid$/i.test(k)) u.searchParams.delete(k); });
     const path = u.pathname.replace(/\/+$/, '');
     const qs = u.searchParams.toString();
     return `${host}${path}${qs ? '?' + qs : ''}`;
@@ -119,7 +119,7 @@ async function streamOnce({ key, system, messages, maxSearches, maxTokens, onEve
       }
       case 'message_delta':
         stopReason = ev.delta?.stop_reason ?? stopReason;
-        usage.output_tokens += ev.usage?.output_tokens || 0;
+        usage.output_tokens = ev.usage?.output_tokens ?? usage.output_tokens;
         break;
       case 'error':
         throw new Error(ev.error?.message || 'Claude API stream error');
@@ -144,6 +144,7 @@ export async function runWithSearch({ system, user, maxSearches = 5, maxTokens =
     all.push(...r.blocks);
     usage.input_tokens += r.usage.input_tokens;
     usage.output_tokens += r.usage.output_tokens;
+    if (r.stopReason === 'max_tokens') throw new Error('The answer ran longer than allowed and was cut off. Ask for fewer ideas and run it again.');
     if (r.stopReason !== 'pause_turn') break;
   }
   const d = digest(all);
@@ -180,13 +181,22 @@ export function extractJson(text) {
   return JSON.parse(body.slice(start, end + 1));
 }
 
+// A DOI is a paper's permanent identifier; the same paper can appear under many URLs.
+export function doiOf(raw) {
+  const m = decodeURIComponent(String(raw || '').replace(/&amp;/g, '&')).match(/10\.\d{4,9}\/[^\s&?#"'<>]+/i);
+  return m ? m[0].replace(/\.(pdf|full|abstract)$/i, '').replace(/\/(full|pdf|abstract)$/i, '').toLowerCase() : null;
+}
+
 // ---------- The safeguard: every cited source must be one the search actually returned ----------
+// Match 1: the same URL (ignoring tracking parameters and formatting). Match 2: the same paper by DOI.
 export function checkClaims(claims, retrieved) {
+  const dois = new Set([...retrieved.values()].map((r) => doiOf(r.url)).filter(Boolean));
   return (Array.isArray(claims) ? claims : []).map((c) => {
     const n = c?.source_url ? normalizeUrl(c.source_url) : null;
+    const doi = c?.source_url ? doiOf(c.source_url) : null;
     let status;
     if (!c?.source_url) status = 'unsourced';
-    else if (n && retrieved.has(n)) status = 'source-retrieved';
+    else if ((n && retrieved.has(n)) || (doi && dois.has(doi))) status = 'source-retrieved';
     else status = 'source-not-retrieved';
     return { claim: c?.claim || '', source_url: c?.source_url || null, source_title: c?.source_title || null, status };
   });

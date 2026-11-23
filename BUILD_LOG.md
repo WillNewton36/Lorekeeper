@@ -109,3 +109,23 @@ Imported the repository into Vercel. Vercel rejected the project name "LoreKeepe
 
 **14:06 · Deploy · Will**
 Deployed to production on Vercel with `ANTHROPIC_API_KEY` set as an environment variable (the key is stored only in Vercel, never in the code). Build took 8 seconds. The deployment preview showed the Studio page loading correctly.
+
+**14:09 · Deploy · Will**
+Live at **https://lorekeeper-ten-blond.vercel.app/** (the public prototype link for the reference list and slides).
+
+**14:12 · Test · Claude** (first real run against the Claude API)
+Checked `/api/health`: research engine connected, model `claude-sonnet-5-5`. Ran one research request on the live site with the sample creator, 3 ideas:
+- Finished in 63 seconds. The live trail streamed correctly: one stage message, 4 searches, 4 sets of sources, then the writing stage.
+- Real research found: Epicurus' *Letter to Menoeceus*; Bellezza, Paharia and Keinan's study of busyness as a status symbol (Columbia Business School); Seneca's *On the Shortness of Life*; Whillans et al. (2017, PNAS), "Buying time promotes happiness" (n = 6,271).
+- Ideas returned: "Why being 'so busy' became a status symbol (and what Seneca would say)", "Epicurus and the 'enough' test", "Time over money: what a 6,000-person study says about buying back your hours".
+- Source check: 13 of 15 claims were *Found in search*. 2 were flagged *Not found in search*.
+- Token use was about 8,200 output tokens for 3 ideas, close to the 8,000 limit.
+
+**14:15 · Change · Claude** (findings from the first real run)
+- **Investigated the 2 flagged claims: false alarms.** Both cited the real Whillans PNAS paper through a Google Scholar link. The search had returned that paper (including on pnas.org and a Scholar link), but the AI wrote the Scholar link differently (dropped some authors), and the search tool's copy had HTML-encoded characters (`&amp;`). The exact-URL rule was stricter than intended.
+- **Fix:** the source check now matches in two ways: the same URL (now also ignoring encoded characters), or **the same paper by its DOI**, the permanent ID every journal article has. A made-up DOI is still flagged. Re-running the check on the live result gave 15 of 15 claims found, which is correct.
+- *Reflection for Part A:* the safeguard failed safe. It flagged real sources for a human to check rather than letting a fake one through. Tightening it reduced false alarms without weakening the core rule.
+- **Output limit raised** from 8,000 to 16,000 tokens for ideas (8,000 for remix) so 5–6 ideas are not cut off; prompts now tell the AI to skip commentary outside the JSON. If an answer is ever cut off, the app says so plainly instead of failing silently.
+- Fixed the output token count (it was being added up instead of read as a running total).
+- New automated tests for DOI matching and encoded links. All tests passed.
+- *Cost observed:* about US$0.15–0.20 per full research run (searches plus output), more than the earlier estimate of "a few cents". US$5 covers about 25–30 runs.
