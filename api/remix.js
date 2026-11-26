@@ -47,8 +47,9 @@ Break it down and give me one original idea in my voice.`;
   const send = openStream(res);
   send({ type: 'stage', label: 'Breaking down the reference post' });
   try {
-    const { queries, retrieved, text, usage } = await runWithSearch({ system: SYSTEM, user, maxSearches: 3, maxTokens: 8000, onEvent: send });
+    const { queries, retrieved, text, usage, stopReason } = await runWithSearch({ system: SYSTEM, user, maxSearches: 3, maxTokens: 12000, onEvent: send });
     send({ type: 'stage', label: 'Checking every source against the search results' });
+    if (stopReason === 'max_tokens') throw new Error('The answer ran longer than allowed and was cut off. Shorten the post description and run it again.');
     const out = extractJson(text);
     send({
       type: 'done',

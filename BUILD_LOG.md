@@ -154,3 +154,14 @@ Downloaded his real Meta Business Suite export. On his Mac it opened in Numbers,
 
 **10:50 · Change · Claude**
 Removed the file-type restriction on the upload button so no file is greyed out. Picking a Numbers or Excel file now shows a plain instruction to export it as CSV (Numbers: File → Export To → CSV). *Why:* Mac users often won't realise a CSV has been opened and re-saved in Numbers; the app should explain the fix rather than silently refuse.
+
+**10:57 · Test · Will** (first research run on his own data)
+Uploaded his real CSV successfully. Ran a 5-idea batch on his @newtonslores profile. It failed with "The answer ran longer than allowed and was cut off."
+
+**11:12 · Change · Claude**
+- *Cause:* real data (up to 40 posts) gives the AI much more to analyse than the 7-post sample, so 5 ideas plus insights exceeded the 16,000-token output limit. The whole batch was lost, which is the wrong failure: the finished ideas were still usable.
+- **Limit raised** to 24,000 output tokens for ideas and 12,000 for remix. (Kept below the level that could exceed Vercel's 300-second function limit.)
+- **Concision rule added to the prompt:** one or two sentences per field, exactly 3 outline beats, at most 3 claims per idea, at most 3 performance insights. *Why:* shorter output is faster, cheaper and easier to read on stage.
+- **Graceful cut-off:** if an answer is still cut off, the server now recovers every idea that was written in full and drops only the unfinished one. The page says "Showing 3 of 5 ideas" with an explanation, instead of an error and nothing.
+- New automated test for recovering finished ideas from a cut-off answer. All server and interface tests passed.
+- *Reflection for Part A:* testing on real data exposed a failure the sample data never triggered; the fix changes the failure from "lose everything" to "keep what is complete and say so".

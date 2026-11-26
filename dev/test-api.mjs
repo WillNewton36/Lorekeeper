@@ -68,5 +68,13 @@ assert.deepEqual(checked.map((c) => c.status), ['source-retrieved', 'source-retr
 assert.equal(doiOf('https://www.pnas.org/doi/pdf/10.1073/pnas.1706541114'), '10.1073/pnas.1706541114');
 console.log('DOI matching: same paper via a different link accepted, made-up DOI still flagged');
 
+// A cut-off answer keeps the ideas that were finished
+const { salvageArray } = await import('../api/_lib.js');
+const partial = '<result>{"performance_insights":[{"insight":"a","evidence":"b"}],"ideas":[{"title":"One","hook":"h {x}","claims":[]},{"title":"Two \\" q","claims":[]},{"title":"Thr';
+const salv = salvageArray(partial, 'ideas');
+assert.deepEqual(salv.map((x) => x.title), ['One', 'Two " q']);
+assert.equal(salvageArray(partial, 'performance_insights').length, 1);
+console.log('cut-off answer: 2 finished ideas recovered, the unfinished one dropped');
+
 assert.equal(normalizeUrl('https://WWW.Example.com/a/?utm_medium=b&id=2#x'), 'example.com/a?id=2');
 console.log('\nAll API tests passed.');

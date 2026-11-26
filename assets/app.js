@@ -430,6 +430,7 @@ function renderRun(run) {
   const insights = (d.performance_insights || []).map((x) => `<li><strong>${esc(x.insight)}</strong><span>${esc(x.evidence)}</span></li>`).join('');
   $('#ideasOut').innerHTML = `
     <div class="row" style="margin:22px 0 12px"><h2 style="font-size:var(--t-xl)">${d.ideas.length} ideas</h2><span class="spacer"></span>${history}</div>
+    ${d.meta?.truncated ? `<div class="error-box" style="background:var(--bronze-wash);color:#5e3f17"><strong>Showing ${d.ideas.length} of ${d.meta.requested} ideas.</strong>The answer ran long and was cut off, so Lorekeeper kept every idea that was finished in full. Run again for more.</div>` : ''}
     ${insights ? `<div class="panel panel-pad"><h3 style="font-size:var(--t-lg);margin-bottom:12px">What is working on your page</h3><ul class="insights">${insights}</ul></div>` : ''}
     <div class="ideas">${d.ideas.map((idea, i) => ideaHtml(idea, `${run.id}-${i}`)).join('')}</div>`;
   $$('#ideasOut .idea').forEach((el, i) => { wireIdea(el, d.ideas[i], 'research'); refreshIdea(el); });
@@ -449,7 +450,7 @@ $('#runIdeas').onclick = async () => {
     store.set('runs', [run, ...store.get('runs', [])].slice(0, 8));
     ideasTrail.stop();
     renderRun(run);
-    toast(`${data.ideas.length} ideas ready`);
+    toast(data.meta?.truncated ? `${data.ideas.length} ideas ready (the answer was cut off; finished ideas kept)` : `${data.ideas.length} ideas ready`);
   } catch (err) {
     ideasTrail.stop();
     $('#ideasError').innerHTML = `<div class="error-box"><strong>The research did not finish.</strong>${esc(err.message)}</div>`;

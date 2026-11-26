@@ -1,4 +1,4 @@
-import { runWithSearch, extractJson, checkClaims, rateLimited, clip, sendError, openStream, readBody, MODEL } from './_lib.js';
+import { runWithSearch, extractJson, salvageArray, checkClaims, rateLimited, clip, sendError, openStream, readBody, MODEL } from './_lib.js';
 
 const SYSTEM = `You are Lorekeeper, a research-grounded content strategist for educational short-form creators (philosophy, psychology, history, science and similar niches).
 
@@ -12,6 +12,7 @@ Rules you must follow:
 5. HONESTY OVER VIRALITY. Do not suggest hooks that misrepresent research or overstate findings. For each idea, name the main accuracy risk (e.g. oversimplifying a study, a misattributed quote, a small sample).
 6. ORIGINALITY. Do not reproduce other creators' scripts or signature bits.
 7. AVOID REPEATS. Do not pitch ideas the creator has clearly already posted (see their past posts and the 'already planned' list); build on what worked instead.
+9. BE CONCISE. Each field is one or two sentences. Give exactly 3 outline beats, at most 3 claims per idea and at most 3 performance insights. Quality over volume.
 8. SKILL BUILDING. Give one practical craft tip per idea that would make the creator better at making this kind of video.
 
 When research is done, do not write any commentary. Reply with ONLY a JSON object wrapped in <result></result> tags, matching exactly:
@@ -70,9 +71,15 @@ Request: research my niche and give me ${n} content ideas.${clip(focus, 400) ? `
   const send = openStream(res);
   send({ type: 'stage', label: 'Reading your brand profile and past posts' });
   try {
-    const { queries, retrieved, text, usage } = await runWithSearch({ system: SYSTEM, user, maxSearches: 6, maxTokens: 16000, onEvent: send });
+    const { queries, retrieved, text, usage, stopReason } = await runWithSearch({ system: SYSTEM, user, maxSearches: 6, maxTokens: 24000, onEvent: send });
     send({ type: 'stage', label: 'Checking every source against the search results' });
-    const out = extractJson(text);
+    let out; let truncated = false;
+    if (stopReason === 'max_tokens') {
+      // Cut off part-way: keep every idea that was written in full rather than losing the whole batch.
+      truncated = true;
+      out = { performance_insights: salvageArray(text, 'performance_insights'), ideas: salvageArray(text, 'ideas') };
+      if (!out.ideas.length) throw new Error('The answer ran longer than allowed before any idea was finished. Ask for 3 ideas and run it again.');
+    } else out = extractJson(text);
     const ideas = (out.ideas || []).map((idea) => ({ ...idea, claims: checkClaims(idea.claims, retrieved) }));
     send({
       type: 'done',
@@ -80,7 +87,7 @@ Request: research my niche and give me ${n} content ideas.${clip(focus, 400) ? `
         performance_insights: out.performance_insights || [],
         ideas,
         research: { queries, sources: [...retrieved.values()] },
-        meta: { model: MODEL, usage, generated_at: new Date().toISOString(), focus: clip(focus, 400) },
+        meta: { model: MODEL, usage, generated_at: new Date().toISOString(), focus: clip(focus, 400), truncated, requested: n },
       },
     });
   } catch (err) {

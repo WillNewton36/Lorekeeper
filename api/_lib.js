@@ -137,6 +137,7 @@ export async function runWithSearch({ system, user, maxSearches = 5, maxTokens =
 
   const all = [];
   const usage = { input_tokens: 0, output_tokens: 0 };
+  let stopReason = null;
   for (let round = 0; round < 4; round++) {
     const messages = [{ role: 'user', content: user }];
     if (all.length) messages.push({ role: 'assistant', content: all });
@@ -144,11 +145,11 @@ export async function runWithSearch({ system, user, maxSearches = 5, maxTokens =
     all.push(...r.blocks);
     usage.input_tokens += r.usage.input_tokens;
     usage.output_tokens += r.usage.output_tokens;
-    if (r.stopReason === 'max_tokens') throw new Error('The answer ran longer than allowed and was cut off. Ask for fewer ideas and run it again.');
+    stopReason = r.stopReason;
     if (r.stopReason !== 'pause_turn') break;
   }
   const d = digest(all);
-  return { ...d, usage: { ...usage, web_search_requests: d.queries.length } };
+  return { ...d, stopReason, usage: { ...usage, web_search_requests: d.queries.length } };
 }
 
 // ---------- What was actually searched and retrieved, plus the final text ----------
@@ -169,6 +170,24 @@ export function digest(content) {
     }
   }
   return { queries, retrieved, text };
+}
+
+// Recover every complete {...} object from a JSON array that was cut off part-way.
+export function salvageArray(text, key) {
+  const start = text.indexOf(`"${key}"`);
+  if (start === -1) return [];
+  const open = text.indexOf('[', start);
+  if (open === -1) return [];
+  const items = []; let depth = 0; let inStr = false; let esc = false; let objStart = -1;
+  for (let i = open + 1; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; continue; }
+    if (c === '"') inStr = true;
+    else if (c === '{') { if (depth === 0) objStart = i; depth++; }
+    else if (c === '}') { depth--; if (depth === 0 && objStart !== -1) { try { items.push(JSON.parse(text.slice(objStart, i + 1))); } catch {} objStart = -1; } }
+    else if (c === ']' && depth === 0) break;
+  }
+  return items;
 }
 
 export function extractJson(text) {
