@@ -105,7 +105,8 @@ profileForm.addEventListener('input', () => {
 $('#postsFile').addEventListener('change', async (e) => {
   const file = e.target.files[0]; e.target.value = '';
   if (!file) return;
-  if (/\.(xlsx|xls)$/i.test(file.name)) { toast('Export it as CSV instead: choose “.csv” in the export options.'); return; }
+  if (/\.numbers$/i.test(file.name)) { toast('That is a Numbers file. In Numbers choose File, then Export To, then CSV, and upload that file.'); return; }
+  if (/\.(xlsx|xls)$/i.test(file.name)) { toast('That is an Excel file. Choose File, then Save As or Export, pick CSV, and upload that file.'); return; }
   const tidy = tidyExport(await file.text());
   if (!tidy) { toast('Lorekeeper could not find a views, plays or reach column in that file. Check it is a post-level export.'); return; }
   const box = $('[name=posts]', profileForm);

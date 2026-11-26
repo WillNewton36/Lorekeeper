@@ -148,3 +148,9 @@ Instagram's own app only exports insights to a spreadsheet with a paid Meta One 
 
 **10:42 · Test · Claude**
 New browser test (`dev/test-upload.py`) with a file shaped like Meta's export (byte-order mark, Post ID first, a two-line caption, quotes inside a caption, "Data comment" before "Comments"). First run found comments reading as blank ("Data comment" matched first); fixed by preferring exact names. Second run: all 3 posts and all 8 columns correct. Full interface test and server tests passed with no errors.
+
+**10:48 · Test · Will** (first real export)
+Downloaded his real Meta Business Suite export. On his Mac it opened in Numbers, and the app's file picker would not accept it (the picker only allowed CSV-type files, so a `.numbers` file was greyed out).
+
+**10:50 · Change · Claude**
+Removed the file-type restriction on the upload button so no file is greyed out. Picking a Numbers or Excel file now shows a plain instruction to export it as CSV (Numbers: File → Export To → CSV). *Why:* Mac users often won't realise a CSV has been opened and re-saved in Numbers; the app should explain the fix rather than silently refuse.
