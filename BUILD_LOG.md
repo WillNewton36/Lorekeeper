@@ -129,3 +129,22 @@ Checked `/api/health`: research engine connected, model `claude-sonnet-5-5`. Ran
 - Fixed the output token count (it was being added up instead of read as a running total).
 - New automated tests for DOI matching and encoded links. All tests passed.
 - *Cost observed:* about US$0.15–0.20 per full research run (searches plus output), more than the earlier estimate of "a few cents". US$5 covers about 25–30 runs.
+
+## 26 November 2026: analytics upload
+
+**10:30 · Decision · Will**
+Asked how to get a CSV of post analytics and whether there was an easier way for users to bring their analytics into the app.
+
+**10:32 · Research · Claude**
+Instagram's own app only exports insights to a spreadsheet with a paid Meta One plan. The free route is Meta Business Suite on a computer: Insights → Content → Export data (CSV, post level). Meta's export contains many columns Lorekeeper doesn't need (Post ID, Account ID, Permalink, Duration, "Data comment") and full multi-line captions.
+
+**10:35 · Change · Claude** (analytics upload)
+- **Found a bug before Will hit it:** the old reader could pick "Post ID" as the post title, and multi-line captions would break rows apart.
+- **New CSV reader:** handles captions with commas, quotes and line breaks; detects comma or tab separators; skips any title rows above the header; never uses ID, link, account or duration columns as the title; prefers exact column names (so "Comments" wins over "Data comment").
+- **New "Upload your analytics export" button** on the Brand page. It reads Meta's file in the browser (the file is never sent anywhere), keeps only topic, format, date, views, likes, saves, shares and comments, trims captions to 110 characters, sorts newest first and keeps the 40 most recent posts. *Why:* keeps the data the AI sees short and relevant, and means the user never edits raw CSV.
+- Excel files are refused with a plain instruction to export as CSV instead.
+- The post table now shows each post's format and date.
+- *Privacy point for Part A:* analytics stay on the user's device until they choose to run research, and only the tidied columns are sent then.
+
+**10:42 · Test · Claude**
+New browser test (`dev/test-upload.py`) with a file shaped like Meta's export (byte-order mark, Post ID first, a two-line caption, quotes inside a caption, "Data comment" before "Comments"). First run found comments reading as blank ("Data comment" matched first); fixed by preferring exact names. Second run: all 3 posts and all 8 columns correct. Full interface test and server tests passed with no errors.

@@ -102,6 +102,17 @@ profileForm.addEventListener('input', () => {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => { store.set('profile', readProfile()); $('#saveState').textContent = 'All changes saved'; updateCompleteness(); renderPosts(); }, 350);
 });
+$('#postsFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  if (/\.(xlsx|xls)$/i.test(file.name)) { toast('Export it as CSV instead: choose “.csv” in the export options.'); return; }
+  const tidy = tidyExport(await file.text());
+  if (!tidy) { toast('Lorekeeper could not find a views, plays or reach column in that file. Check it is a post-level export.'); return; }
+  const box = $('[name=posts]', profileForm);
+  box.value = tidy.csv;
+  box.dispatchEvent(new Event('input', { bubbles: true }));
+  toast(tidy.total > tidy.kept ? `Read ${tidy.total} posts. Kept your ${tidy.kept} most recent.` : `Read ${tidy.total} posts from ${file.name}.`);
+});
 $('#loadSample').onclick = () => { writeProfile(SAMPLE); store.set('profile', SAMPLE); updateCompleteness(); renderPosts(); toast('Sample creator loaded. Replace it with your own details any time.'); };
 $('#clearProfile').onclick = () => { if (!confirmInline('#clearProfile', 'Clear everything?')) return; writeProfile({}); store.set('profile', {}); updateCompleteness(); renderPosts(); toast('Profile cleared'); };
 
@@ -126,38 +137,69 @@ function updateCompleteness() {
 }
 
 /* ---------- Post data: parse locally, no AI ---------- */
-function parseCSVLine(line) {
-  const out = []; let cur = ''; let q = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (q) { if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; }
-    else if (c === '"') q = true; else if (c === ',' || c === '\t') { out.push(cur); cur = ''; } else cur += c;
+// Full CSV parser: handles quoted fields containing commas, quotes and line breaks (multi-line captions).
+function parseCSV(text) {
+  const src = String(text || '').replace(/^\uFEFF/, '');
+  const firstLine = src.split(/\r?\n/, 1)[0] || '';
+  const delim = (firstLine.match(/\t/g) || []).length > (firstLine.match(/,/g) || []).length ? '\t' : ',';
+  const rows = []; let row = []; let cur = ''; let q = false;
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (q) { if (c === '"' && src[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; continue; }
+    if (c === '"') q = true;
+    else if (c === delim) { row.push(cur.trim()); cur = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && src[i + 1] === '\n') i++; row.push(cur.trim()); cur = ''; if (row.some((x) => x)) rows.push(row); row = []; }
+    else cur += c;
   }
-  out.push(cur);
-  return out.map((s) => s.trim());
+  row.push(cur.trim()); if (row.some((x) => x)) rows.push(row);
+  return rows;
 }
+// Column finders, in priority order. ID, link and account columns are never used as the title.
 const COLS = {
-  title: /title|topic|caption|post|description|name/i, format: /format|type|media/i, views: /view|play|reach|impression/i,
-  likes: /like/i, saves: /save/i, shares: /share/i, comments: /comment/i,
+  title: [/^(description|caption)$/i, /description|caption/i, /title|topic/i, /^post$/i],
+  format: [/post type|media type|^format$|^type$/i, /format|type/i],
+  date: [/publish time|published|posted|^date$/i, /date|time/i],
+  views: [/^views?$|plays/i, /view/i, /reach/i, /impression/i],
+  likes: [/^likes?$/i, /like/i], saves: [/^saves?$/i, /save/i], shares: [/^shares?$/i, /share/i], comments: [/^comments?$/i, /comment/i],
 };
-function parsePosts(text) {
-  const lines = String(text || '').split(/\r?\n/).map((l) => l.trim()).filter((l) => l && l.includes(','));
-  if (lines.length < 2) return [];
-  const header = parseCSVLine(lines[0]);
-  const idx = {};
-  for (const [key, re] of Object.entries(COLS)) {
-    const i = header.findIndex((h, j) => re.test(h) && !Object.values(idx).includes(j));
-    if (i !== -1) idx[key] = i;
+const NEVER_TITLE = /\bid\b|link|url|permalink|account|username|duration/i;
+function findColumns(header) {
+  const idx = {}; const used = new Set();
+  for (const [key, patterns] of Object.entries(COLS)) {
+    for (const re of patterns) {
+      const i = header.findIndex((h, j) => !used.has(j) && re.test(h) && !(key === 'title' && NEVER_TITLE.test(h)) && !(key !== 'date' && /time/i.test(h) && /publish/i.test(h)));
+      if (i !== -1) { idx[key] = i; used.add(i); break; }
+    }
   }
+  return idx;
+}
+function toNum(v) { const s = String(v ?? '').trim(); if (!s || /^(-|–|n\/a)$/i.test(s)) return null; const n = parseFloat(s.replace(/[^0-9.]/g, '')); return isNaN(n) ? null : /k$/i.test(s) ? n * 1000 : /m$/i.test(s) ? n * 1e6 : n; }
+function parsePosts(text) {
+  const rows = parseCSV(text);
+  if (rows.length < 2) return [];
+  const headerAt = rows.findIndex((r) => r.some((h) => /view|play|reach|impression/i.test(h)));
+  if (headerAt === -1) return [];
+  const idx = findColumns(rows[headerAt]);
   if (idx.views == null) return [];
-  const num = (v) => { const n = parseFloat(String(v || '').replace(/[^0-9.]/g, '')); return isNaN(n) ? null : /k$/i.test(String(v).trim()) ? n * 1000 : n; };
-  return lines.slice(1).map((l) => {
-    const r = parseCSVLine(l);
-    const p = { title: r[idx.title] || '(untitled)', format: idx.format != null ? r[idx.format] : '' };
-    ['views', 'likes', 'saves', 'shares', 'comments'].forEach((k) => (p[k] = idx[k] != null ? num(r[idx[k]]) : null));
+  return rows.slice(headerAt + 1).map((r) => {
+    const raw = (idx.title != null ? r[idx.title] : '') || '(untitled)';
+    const p = { title: raw.replace(/\s+/g, ' ').trim(), format: idx.format != null ? r[idx.format] || '' : '', date: idx.date != null ? r[idx.date] || '' : '' };
+    ['views', 'likes', 'saves', 'shares', 'comments'].forEach((k) => (p[k] = idx[k] != null ? toNum(r[idx[k]]) : null));
     p.saveRate = p.views && p.saves != null ? p.saves / p.views : null;
     return p;
   }).filter((p) => p.views != null);
+}
+// Turns any analytics export into a short, clean table: the parts that matter, trimmed captions, newest first.
+function tidyExport(text, limit = 40) {
+  const posts = parsePosts(text);
+  if (!posts.length) return null;
+  const sorted = posts.some((p) => p.date && !isNaN(Date.parse(p.date))) ? [...posts].sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0)) : posts;
+  const cut = (s, n) => (s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s);
+  const cell = (v) => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const hasDate = sorted.some((p) => p.date);
+  const head = ['topic', 'format', ...(hasDate ? ['date'] : []), 'views', 'likes', 'saves', 'shares', 'comments'];
+  const lines = sorted.slice(0, limit).map((p) => [cut(p.title, 110), p.format, ...(hasDate ? [String(p.date).split(/[ T]/)[0]] : []), p.views, p.likes ?? '', p.saves ?? '', p.shares ?? '', p.comments ?? ''].map(cell).join(','));
+  return { csv: [head.join(','), ...lines].join('\n'), total: posts.length, kept: Math.min(limit, posts.length) };
 }
 function median(a) { const s = a.filter((x) => x != null).sort((x, y) => x - y); if (!s.length) return null; const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
 function postStats(posts) {
@@ -180,7 +222,7 @@ function renderPosts() {
   }
   const max = Math.max(...posts.map((p) => p.views));
   const rows = [...posts].sort((a, b) => b.views - a.views).map((p) => `<tr>
-    <td class="title-cell">${esc(p.title)}${p.format ? `<div class="subtle">${esc(p.format)}</div>` : ''}</td>
+    <td class="title-cell">${esc(p.title)}${p.format || p.date ? `<div class="subtle">${esc([p.format, String(p.date || '').split(/[ T]/)[0]].filter(Boolean).join(', '))}</div>` : ''}</td>
     <td><div class="bar"><span style="width:${(p.views / max) * 100}%"></span></div></td>
     <td class="num">${fmt(p.views)}</td><td class="num">${pct(p.saveRate)}</td></tr>`).join('');
   box.innerHTML = `<table class="posts-table"><thead><tr><th>Post</th><th></th><th style="text-align:right">Views</th><th style="text-align:right">Save rate</th></tr></thead><tbody>${rows}</tbody></table>`;

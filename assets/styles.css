@@ -154,6 +154,11 @@ textarea.data { min-height: 170px; font: 13px/1.5 ui-monospace, 'SF Mono', Menlo
 .bar { height: 6px; background: var(--verdigris-wash); border-radius: 999px; min-width: 60px; }
 .bar > span { display: block; height: 100%; background: var(--verdigris); border-radius: inherit; }
 
+.upload-box { display: flex; gap: 14px; align-items: center; justify-content: space-between; border: 1.5px dashed #b9c6c1; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; background: var(--surface-2); }
+.upload-box:focus-within { border-color: var(--verdigris); }
+label.btn { cursor: pointer; }
+@media (max-width: 820px) { .upload-box { flex-direction: column; align-items: flex-start; } }
+
 /* ---------- Research workspace ---------- */
 .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
 .controls .focus-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
