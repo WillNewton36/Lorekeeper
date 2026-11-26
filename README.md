@@ -13,6 +13,7 @@ Built for the AI Strategy & Implementation Pitch. See `BUILD_LOG.md` for the ful
 | Research ideas | Analyses your posts, searches your niche live, pitches ideas with sourced claims, an accuracy risk and a craft tip |
 | Remix with credit | Separates a post's borrowable structure from what belongs to its creator, builds an original idea, rates similarity and writes a credit line |
 | Content plan | Kept ideas move through Shortlisted, Scripting, Filmed and Posted, with dates and script notes |
+| Scripts | Draft for me (AI drafts, you refine) or Coach me (you write, AI gives feedback only); your voice or structure inspired by a credited creator; instant checks for speaking time, hook length and figures not in your sources; version history labelled by author |
 | Decisions | Every keep or reject with your reason, filterable and exportable |
 | How it works | The pipeline, what each source label means, and where human judgement stays essential |
 
@@ -26,6 +27,7 @@ Built for the AI Strategy & Implementation Pitch. See `BUILD_LOG.md` for the ful
 | `api/_lib.js` | Streams Claude's web search, rebuilds results, runs the source check |
 | `api/ideas.js` | Research and idea generation |
 | `api/remix.js` | Remix with credit |
+| `api/script.js` | Script drafting, refining and coaching (no web search: scripts use only the idea's checked claims) |
 | `api/health.js` | Reports whether the research engine is connected (no credit used) |
 | `dev/` | Local preview server, a fake Claude API, and automated tests. Not deployed. |
 

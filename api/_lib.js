@@ -243,3 +243,18 @@ export async function readBody(req) {
   for await (const c of req) raw += c;
   try { return JSON.parse(raw || '{}'); } catch { return {}; }
 }
+
+// ---------- A plain (non-streaming, no tools) Claude call, used by the script studio ----------
+export async function runPlain({ system, user, maxTokens = 4000, fetchImpl = fetch }) {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error('The research engine is not connected: the server is missing its ANTHROPIC_API_KEY setting.');
+  const res = await fetchImpl(API_URL, {
+    method: 'POST',
+    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user }] }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error?.message || `Claude API error (${res.status})`);
+  const text = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+  return { text, stopReason: data.stop_reason, usage: { input_tokens: data.usage?.input_tokens || 0, output_tokens: data.usage?.output_tokens || 0 } };
+}

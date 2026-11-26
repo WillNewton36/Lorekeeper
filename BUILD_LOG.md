@@ -165,3 +165,25 @@ Uploaded his real CSV successfully. Ran a 5-idea batch on his @newtonslores prof
 - **Graceful cut-off:** if an answer is still cut off, the server now recovers every idea that was written in full and drops only the unfinished one. The page says "Showing 3 of 5 ideas" with an explanation, instead of an error and nothing.
 - New automated test for recovering finished ideas from a cut-off answer. All server and interface tests passed.
 - *Reflection for Part A:* testing on real data exposed a failure the sample data never triggered; the fix changes the failure from "lose everything" to "keep what is complete and say so".
+
+**11:40 · Test · Will** (successful run on his own data)
+After the cut-off fix, ran a research batch on his real @newtonslores profile and analytics. It completed and the results were good.
+
+**11:46 · Decision · Will**
+Asked for a new section for creating and refining scripts, worked through the design with Claude before building.
+
+**11:48 · Decision · Will + Claude** (script section design)
+Claude proposed the flow (open a kept idea, draft, refine, instant checks, versions) and flagged that this is the sharpest "creativity and identity" question in the project: idea generation is AI as researcher, script writing is AI writing the creator's words. Will's choices:
+- **AI's role: both modes.** *Draft for me* (AI writes, creator refines) and *Coach me* (creator writes every word; AI gives feedback but does not rewrite). Chosen per script.
+- **Length:** 45–60 seconds by default, adjustable (30–45, 45–60, 60–90).
+- **Style: two options.** (1) The creator's own voice, pillars and best-performing posts. (2) Inspired by a chosen creator. Claude's design for option 2, consistent with Remix: the user describes the creator's style (the app does not scrape or watch their videos); the AI borrows structure and craft only (hook pattern, pacing, rhythm), never their lines, catchphrases or stories; a credit line is added.
+- **Scope: essentials only** (draft, refine, checks, versions). Teleprompter and b-roll notes deferred to future work.
+
+**11:50–12:30 · Build · Claude** (Scripts)
+- `api/script.js` with three modes: draft, refine, coach. **No web search**: scripts may only use the idea's already source-checked claims; claims flagged *Not found in search* are excluded. If a script needs an unsourced fact, the AI must write `[CHECK: ...]` instead of inventing it. Findings must not be overstated. Coach mode is instructed never to rewrite, only to quote a line, name the weakness and suggest a direction.
+- New **Scripts** page, opened from a **Write script** button on every Content plan card (opening one moves the card to *Scripting*). Settings: mode, style, length. Script editor with autosave, Copy, four one-click refinements (*Sharpen the hook*, *Cut 20%*, *More spoken*, *Stronger ending*) plus a free-text instruction.
+- **Instant checks (no AI):** estimated speaking time at about 150 words a minute against the target; hook length (aim 15 words or fewer); any number or year in the script that does not appear in the idea's checked claims; `[CHECK]` markers still to resolve. *Why:* extends the source-check safeguard from ideas into the words actually spoken on camera.
+- **Version history labelled by author** ("Lorekeeper: First draft", "Lorekeeper: Cut 20%", "You: Your edits"), with restore. *Why:* makes visible how much of a script is the creator's own writing, which is evidence for the identity and authorship reflection.
+
+**12:30 · Test · Claude**
+New browser test (`dev/test-script.py`): keep an idea, open its script, draft, refine, switch to coach mode, get feedback, restore a version, reload. All passed with no errors; the card moved to Scripting and the script persisted. The checks correctly flagged "72%" and "2021" in a test draft because they came from a claim the search never found. Screenshot review found and fixed two bugs: the creator-style fields and the coaching button showed when they should be hidden (a CSS rule overrode the hidden attribute), and the date field on plan cards was squeezed to nothing. Existing interface and server tests still passed.

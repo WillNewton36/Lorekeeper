@@ -26,6 +26,7 @@
       <button data-view="remix"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="M4 4l5 5"/></svg>Remix with credit</button>
       <div class="nav-group">Organise</div>
       <button data-view="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="11" rx="1"/><rect x="17" y="4" width="4" height="7" rx="1"/></svg>Content plan<span class="count" id="navPlanCount">0</span></button>
+      <button data-view="script"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>Scripts</button>
       <button data-view="log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3 6 1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2"/></svg>Decisions</button>
       <button data-view="how"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>How it works</button>
     </nav>
@@ -161,6 +162,76 @@
       </header>
       <div class="row" style="margin-bottom:16px"><span class="spacer"></span><button class="btn secondary sm" id="exportPlan">Export plan as CSV</button></div>
       <div class="board" id="board"></div>
+    </section>
+
+    <!-- SCRIPTS -->
+    <section class="view" id="view-script" aria-labelledby="h-script">
+      <header class="view-head">
+        <h1 id="h-script">Scripts</h1>
+        <p id="scriptLead">Turn an idea from your plan into a script. Let Lorekeeper draft it for you to refine, or write it yourself and get coached.</p>
+      </header>
+      <div id="scriptPicker"></div>
+      <div id="scriptStudio" hidden>
+        <div class="row" style="margin-bottom:14px"><button class="btn quiet sm" id="scriptBack">All scripts</button></div>
+        <div class="script-grid">
+          <div class="stack">
+            <div class="panel panel-pad">
+              <div class="script-settings">
+                <div>
+                  <span class="field-label" id="modeLabel">How you want to work</span>
+                  <div class="segmented" role="group" aria-labelledby="modeLabel" id="modePicker">
+                    <button type="button" data-mode="draft" aria-pressed="true">Draft for me</button><button type="button" data-mode="coach" aria-pressed="false">Coach me</button>
+                  </div>
+                </div>
+                <div>
+                  <span class="field-label" id="styleLabel">Style</span>
+                  <div class="segmented" role="group" aria-labelledby="styleLabel" id="stylePicker">
+                    <button type="button" data-style="voice" aria-pressed="true">My voice</button><button type="button" data-style="creator" aria-pressed="false">Inspired by a creator</button>
+                  </div>
+                </div>
+                <label class="field" style="margin:0"><span class="field-label">Length</span>
+                  <select id="lengthPick"><option value="30-45">30 to 45 seconds</option><option value="45-60" selected>45 to 60 seconds</option><option value="60-90">60 to 90 seconds</option></select></label>
+              </div>
+              <div id="creatorFields" hidden class="two-col" style="margin-top:14px">
+                <label class="field"><span class="field-label">Creator</span><input type="text" id="styleCreator" placeholder="@creator" /></label>
+                <label class="field"><span class="field-label">What their style does</span><textarea id="styleDesc" style="min-height:64px" placeholder="e.g. one-line contrarian hook, fast jump cuts, builds to a single sentence that reframes everything"></textarea><span class="field-hint">Lorekeeper borrows the structure only, never their lines or stories, and adds a credit line.</span></label>
+              </div>
+              <p class="subtle" id="modeHint" style="margin-top:12px"></p>
+            </div>
+            <div class="panel editor-panel">
+              <div class="editor-head">
+                <span class="field-label" style="margin:0">Script</span>
+                <span class="spacer"></span>
+                <span class="save-state" id="scriptSave" aria-live="polite"></span>
+                <button class="btn quiet sm" id="scriptCopy">Copy</button>
+              </div>
+              <textarea id="scriptText" class="script-text" placeholder="Your script appears here. You can edit it directly at any time."></textarea>
+              <div class="editor-actions" id="draftActions">
+                <button class="btn" id="genDraft">Write first draft</button>
+                <div class="refine" id="refineBox">
+                  <span class="subtle">Refine:</span>
+                  <button class="chip" data-refine="Sharpen the hook: make the first line shorter and more intriguing without overstating anything.">Sharpen the hook</button>
+                  <button class="chip" data-refine="Cut the script by about 20% without losing the core point or any sourced claim.">Cut 20%</button>
+                  <button class="chip" data-refine="Make it sound more natural when spoken aloud: contractions, shorter sentences, fewer written-English phrases.">More spoken</button>
+                  <button class="chip" data-refine="Give it a stronger final line that lands the point and stays with the viewer.">Stronger ending</button>
+                  <div class="row" style="width:100%;margin-top:8px"><input type="text" id="refineCustom" placeholder="Or tell it what to change, e.g. move the Seneca line earlier" style="flex:1;min-width:200px" /><button class="btn secondary sm" id="refineGo">Apply</button></div>
+                </div>
+              </div>
+              <div class="editor-actions" id="coachActions" hidden>
+                <button class="btn" id="getCoach">Get feedback on my draft</button>
+                <span class="subtle">Lorekeeper will not rewrite your script, only point out what to fix.</span>
+              </div>
+              <div id="scriptError" style="padding:0 18px 4px"></div>
+            </div>
+            <div id="coachOut"></div>
+          </div>
+          <aside class="stack script-side">
+            <div class="panel panel-pad" id="scriptChecks"></div>
+            <div class="panel panel-pad" id="scriptIdea"></div>
+            <div class="panel panel-pad" id="scriptVersions"></div>
+          </aside>
+        </div>
+      </div>
     </section>
 
     <!-- DECISIONS -->

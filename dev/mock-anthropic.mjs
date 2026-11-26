@@ -74,6 +74,14 @@ export function makeMockFetch({ delay = 0, log = [] } = {}) {
   return async (url, opts) => {
     const body = JSON.parse(opts.body);
     log.push(body);
+    if (!body.stream) {
+      if (delay) await new Promise((r) => setTimeout(r, 800));
+      let out;
+      if (body.system.includes('script coach')) out = { overall: 'Strong idea and a clear argument, but the middle drifts and the ending is generic.', hook: 'Good tension, but 18 words is too long to land before the scroll.', strengths: ['The Seneca line is well placed', 'Plain, spoken language'], unsupported_claims: [{ line: 'Most people waste half their week', problem: 'No source in your checked claims supports this figure.' }], lines: [{ line: 'And that is why time matters.', issue: 'Restates the point without adding anything.', direction: 'End on a question or an action the viewer can take tonight.' }] };
+      else if (body.system.includes('revise')) out = { script: 'Seneca thought you weren’t short of time.\nYou were giving it away.\n\nWe guard our money and hand out our hours to anyone who asks.\nHe called that the strangest habit of all.\n\nSo tonight, look at your week.\nWho did you give it to?', change_summary: 'Shortened the hook to 8 words and cut the middle by about a fifth.' };
+      else out = { script: 'Seneca thought you weren’t short of time. You were giving it away.\n\nTwo thousand years ago he noticed people guard their money but hand out their hours to anyone who asks.\nLife is long enough, he argued, if you actually use it.\n\nA 2021 survey found 72% of adults feel chronically time-poor.\n[CHECK: source for the 2021 survey]\n\nSo here is the question.\nThis week, who did you give your time to?\nAnd did you choose them?', notes: ['Opened on the hook from the idea', 'Kept Seneca’s argument at the strength the source supports', 'Marked the survey figure to check because it was not found in search'], style_credit: body.system.includes('inspired by') ? 'Structure inspired by @othercreator' : '' };
+      return { ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text: '<result>' + JSON.stringify(out) + '</result>' }], stop_reason: 'end_turn', usage: { input_tokens: 900, output_tokens: 400 } }) };
+    }
     const isRemix = body.system.includes('Remix');
     call++;
     const msgStart = { type: 'message_start', message: { usage: { input_tokens: 1200 } } };

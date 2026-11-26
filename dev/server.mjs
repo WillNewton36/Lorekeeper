@@ -13,6 +13,7 @@ const handlers = {
   '/api/ideas': (await import('../api/ideas.js')).default,
   '/api/remix': (await import('../api/remix.js')).default,
   '/api/health': (await import('../api/health.js')).default,
+  '/api/script': (await import('../api/script.js')).default,
 };
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml' };
 

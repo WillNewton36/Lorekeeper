@@ -51,13 +51,13 @@ function download(name, rows) {
 }
 
 /* ---------- Navigation ---------- */
-const VIEWS = ['home', 'brand', 'research', 'remix', 'plan', 'log', 'how'];
+const VIEWS = ['home', 'brand', 'research', 'remix', 'plan', 'script', 'log', 'how'];
 function go(view, push = true) {
   if (!VIEWS.includes(view)) view = 'home';
   $$('.nav button').forEach((b) => (b.dataset.view === view ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
   $$('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + view));
   if (push) history.replaceState(null, '', '#' + view);
-  ({ home: renderHome, brand: renderPosts, research: renderChips, plan: renderBoard, log: renderLog }[view] || (() => {}))();
+  ({ home: renderHome, brand: renderPosts, research: renderChips, plan: renderBoard, script: renderScriptView, log: renderLog }[view] || (() => {}))();
   window.scrollTo({ top: 0 });
 }
 $$('.nav button').forEach((b) => b.addEventListener('click', () => go(b.dataset.view)));
@@ -357,7 +357,7 @@ function decide(key, idea, decision, reason, kind) {
   store.set('log', log);
   if (decision === 'keep') {
     const plan = store.get('plan', []);
-    plan.push({ id: uid(), key, title: idea.title, hook: idea.hook, pillar: idea.pillar || (kind === 'remix' ? 'Remix' : ''), format: idea.format || '', effort: idea.effort || '', outline: idea.outline || [], claims: idea.claims || [], attribution: idea.attribution || '', stage: 'Shortlisted', date: '', notes: '', addedAt: new Date().toISOString() });
+    plan.push({ id: uid(), key, title: idea.title, hook: idea.hook, angle: idea.angle || '', pillar: idea.pillar || (kind === 'remix' ? 'Remix' : ''), format: idea.format || '', effort: idea.effort || '', outline: idea.outline || [], claims: idea.claims || [], attribution: idea.attribution || '', stage: 'Shortlisted', date: '', notes: '', addedAt: new Date().toISOString() });
     store.set('plan', plan);
     updatePlanCount();
     toast('Kept. Added to your content plan.');
@@ -529,6 +529,7 @@ function renderBoard() {
           ${it.attribution ? `<p class="subtle">Credit: ${esc(it.attribution)}</p>` : ''}
           <textarea data-notes placeholder="Script notes">${esc(it.notes)}</textarea>
         </details>
+        <button class="btn secondary sm script-btn" data-script>${it.script ? `Open script (${wordCount(it.script)} words)` : 'Write script'}</button>
         <div class="card-foot">
           <input type="date" value="${esc(it.date)}" data-date aria-label="Planned date" />
           <span class="spacer"></span>
@@ -545,6 +546,7 @@ board.addEventListener('click', (e) => {
   const id = card.dataset.id;
   const mv = e.target.closest('[data-move]');
   if (mv) { const it = store.get('plan', []).find((x) => x.id === id); const ni = STAGES.indexOf(it.stage) + +mv.dataset.move; savePlanItem(id, { stage: STAGES[ni] }); renderBoard(); updatePlanCount(); toast(`Moved to ${STAGES[ni]}`); }
+  if (e.target.closest('[data-script]')) { openScript(id); return; }
   if (e.target.closest('[data-remove]')) { store.set('plan', store.get('plan', []).filter((x) => x.id !== id)); renderBoard(); updatePlanCount(); toast('Removed from plan. The decision stays in your log.'); }
 });
 board.addEventListener('change', (e) => { const card = e.target.closest('.plan-card'); if (card && e.target.matches('[data-date]')) { savePlanItem(card.dataset.id, { date: e.target.value }); renderBoard(); } });
@@ -556,6 +558,200 @@ board.addEventListener('dragleave', (e) => { if (!board.contains(e.relatedTarget
 board.addEventListener('drop', (e) => { const col = e.target.closest('.column'); if (!col) return; e.preventDefault(); savePlanItem(e.dataTransfer.getData('text/plain'), { stage: col.dataset.stage }); renderBoard(); updatePlanCount(); });
 $('#exportPlan').onclick = () => download('lorekeeper-content-plan.csv', [['stage', 'planned date', 'title', 'hook', 'pillar', 'outline', 'sources', 'credit', 'notes'],
   ...store.get('plan', []).map((x) => [x.stage, x.date, x.title, x.hook, x.pillar, (x.outline || []).join(' | '), (x.claims || []).map((c) => c.source_url || 'no source').join(' | '), x.attribution, x.notes])]);
+
+
+/* ---------- Scripts ---------- */
+const WPS = 2.5; // average speaking pace: about 150 words a minute
+const LEN_RANGE = { '30-45': [30, 45], '45-60': [45, 60], '60-90': [60, 90] };
+let currentScriptId = null;
+let scriptMode = 'draft';
+let scriptStyle = 'voice';
+
+function planItem(id) { return store.get('plan', []).find((x) => x.id === id); }
+function openScript(id) {
+  currentScriptId = id;
+  const it = planItem(id);
+  if (it && it.stage === 'Shortlisted') { savePlanItem(id, { stage: 'Scripting' }); updatePlanCount(); }
+  go('script');
+}
+function renderScriptView() {
+  const it = currentScriptId && planItem(currentScriptId);
+  $('#scriptStudio').hidden = !it;
+  $('#scriptPicker').hidden = !!it;
+  if (!it) return renderScriptPicker();
+  $('#scriptLead').textContent = it.title;
+  const st = it.scriptSettings || {};
+  scriptMode = st.mode || 'draft'; scriptStyle = st.style || 'voice';
+  $('#lengthPick').value = st.length || '45-60';
+  $('#styleCreator').value = st.creator || ''; $('#styleDesc').value = st.creatorDesc || '';
+  $('#scriptText').value = it.script || '';
+  $('#coachOut').innerHTML = it.coach ? coachHtml(it.coach) : '';
+  $('#scriptError').innerHTML = '';
+  syncScriptControls(); renderIdeaPanel(it); renderChecks(); renderVersions();
+}
+function renderScriptPicker() {
+  $('#scriptLead').textContent = 'Turn an idea from your plan into a script. Let Lorekeeper draft it for you to refine, or write it yourself and get coached.';
+  const plan = store.get('plan', []);
+  if (!plan.length) { $('#scriptPicker').innerHTML = '<div class="panel empty"><h3>No ideas to script yet</h3><p>Keep an idea from Research or Remix, then write its script here.</p><button class="btn" data-go="research">Research ideas</button></div>'; return; }
+  const sorted = [...plan].sort((a, b) => (b.script ? 1 : 0) - (a.script ? 1 : 0));
+  $('#scriptPicker').innerHTML = `<div class="script-list">${sorted.map((it) => `<button class="script-card" data-open="${it.id}">
+    <div class="idea-meta"><span class="tag ${it.script ? 'pillar' : ''}">${it.script ? `Script, ${wordCount(it.script)} words` : 'No script yet'}</span><span class="tag">${esc(it.stage)}</span></div>
+    <h3>${esc(it.title)}</h3><p>${esc(it.script ? it.script.split('\n')[0] : it.hook)}</p></button>`).join('')}</div>`;
+  $$('#scriptPicker [data-open]').forEach((b) => b.addEventListener('click', () => openScript(b.dataset.open)));
+}
+$('#scriptBack').onclick = () => { currentScriptId = null; renderScriptView(); };
+
+function syncScriptControls() {
+  $$('#modePicker button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.mode === scriptMode));
+  $$('#stylePicker button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.style === scriptStyle));
+  $('#creatorFields').hidden = scriptStyle !== 'creator';
+  $('#draftActions').hidden = scriptMode !== 'draft';
+  $('#coachActions').hidden = scriptMode !== 'coach';
+  const has = $('#scriptText').value.trim().length > 0;
+  $('#genDraft').textContent = has ? 'Write a fresh draft' : 'Write first draft';
+  $('#refineBox').style.display = has ? '' : 'none';
+  $('#modeHint').textContent = scriptMode === 'draft'
+    ? 'Lorekeeper writes a first draft using only this idea’s checked sources. Edit it directly, or use the refine buttons.'
+    : 'You write every word. Lorekeeper reads your draft and tells you what to fix, without rewriting it.';
+  $('#scriptText').placeholder = scriptMode === 'draft' ? 'Your draft appears here. You can edit it directly at any time.' : 'Write your script here. When you have a draft, ask for feedback.';
+}
+function saveSettings() {
+  if (!currentScriptId) return;
+  savePlanItem(currentScriptId, { scriptSettings: { mode: scriptMode, style: scriptStyle, length: $('#lengthPick').value, creator: $('#styleCreator').value, creatorDesc: $('#styleDesc').value } });
+}
+$$('#modePicker button').forEach((b) => b.addEventListener('click', () => { scriptMode = b.dataset.mode; saveSettings(); syncScriptControls(); }));
+$$('#stylePicker button').forEach((b) => b.addEventListener('click', () => { scriptStyle = b.dataset.style; saveSettings(); syncScriptControls(); }));
+['#lengthPick', '#styleCreator', '#styleDesc'].forEach((sel) => $(sel).addEventListener('change', () => { saveSettings(); renderChecks(); }));
+
+// Typing autosaves; a "You edited" version is recorded once you pause.
+let scriptTimer; let editTimer;
+$('#scriptText').addEventListener('input', () => {
+  if (!currentScriptId) return;
+  $('#scriptSave').textContent = 'Saving…';
+  clearTimeout(scriptTimer); clearTimeout(editTimer);
+  scriptTimer = setTimeout(() => { savePlanItem(currentScriptId, { script: $('#scriptText').value }); $('#scriptSave').textContent = 'Saved'; renderChecks(); syncScriptControls(); }, 400);
+  editTimer = setTimeout(() => addVersion('You', 'Your edits', $('#scriptText').value), 4000);
+});
+$('#scriptCopy').onclick = async () => { try { await navigator.clipboard.writeText($('#scriptText').value); toast('Script copied'); } catch { toast('Copy failed. Select the text instead.'); } };
+
+function addVersion(who, label, text) {
+  const it = planItem(currentScriptId); if (!it || !text.trim()) return;
+  const versions = it.versions || [];
+  if (versions[0]?.text === text) return;
+  if (who === 'You' && versions[0]?.who === 'You' && Date.now() - new Date(versions[0].at) < 120000) versions.shift(); // merge rapid edits
+  versions.unshift({ who, label, text, at: new Date().toISOString() });
+  savePlanItem(currentScriptId, { versions: versions.slice(0, 30) });
+  renderVersions();
+}
+function renderVersions() {
+  const it = planItem(currentScriptId); const v = it?.versions || [];
+  const cur = $('#scriptText').value;
+  $('#scriptVersions').innerHTML = `<h3 style="font-size:var(--t-lg);margin-bottom:8px">Versions</h3>${v.length ? v.map((x, i) => `<div class="version ${x.text === cur ? 'current' : ''}">
+      <div style="flex:1"><span class="who">${esc(x.who === 'You' ? 'You' : 'Lorekeeper')}</span>: ${esc(x.label)}<div class="when">${ago(x.at)}, ${wordCount(x.text)} words</div></div>
+      ${x.text === cur ? '<span class="subtle">Current</span>' : `<button class="btn quiet sm" data-restore="${i}">Restore</button>`}</div>`).join('') : '<p class="subtle">Every draft, refinement and your own edits are saved here, labelled by who wrote them.</p>'}`;
+  $$('#scriptVersions [data-restore]').forEach((b) => b.addEventListener('click', () => {
+    const x = v[+b.dataset.restore]; $('#scriptText').value = x.text; savePlanItem(currentScriptId, { script: x.text });
+    addVersion('You', `Restored “${x.label}”`, x.text); renderChecks(); syncScriptControls(); toast('Version restored');
+  }));
+}
+
+function renderIdeaPanel(it) {
+  $('#scriptIdea').innerHTML = `<h3 style="font-size:var(--t-lg);margin-bottom:6px">The idea</h3>
+    <div class="idea-hook" style="font-size:16px;margin-top:0">“${esc(it.hook)}”</div>
+    ${it.outline?.length ? `<ol style="padding-left:18px;margin:10px 0;font-size:var(--t-sm)">${it.outline.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}
+    <div class="k" style="font-size:var(--t-sm);font-weight:600;color:var(--ink-3);margin:12px 0 6px">Facts you can use</div>
+    <div style="font-size:var(--t-sm)">${claimsHtml(it.claims)}</div>
+    ${it.attribution ? `<p class="subtle" style="margin-top:10px">Credit: ${esc(it.attribution)}</p>` : ''}`;
+}
+
+/* Instant checks, computed in the browser: no AI involved. */
+function wordCount(t) { return (String(t || '').match(/[A-Za-z0-9’'-]+/g) || []).length; }
+function figuresIn(t) { return [...new Set((String(t || '').match(/\b\d[\d,.]*%?|\b(?:19|20)\d{2}\b/g) || []).map((x) => x.replace(/[.,]$/, '')))]; }
+function renderChecks() {
+  const it = planItem(currentScriptId); if (!it) return;
+  const text = $('#scriptText').value;
+  const words = wordCount(text); const secs = Math.round(words / WPS);
+  const [lo, hi] = LEN_RANGE[$('#lengthPick').value] || [45, 60];
+  const firstLine = (text.trim().split(/\n|(?<=[.?!])\s/)[0] || '').trim();
+  const hookWords = wordCount(firstLine);
+  const sourceText = (it.claims || []).filter((c) => c.status === 'source-retrieved').map((c) => c.claim).join(' ') + ' ' + (it.hook || '') + ' ' + (it.outline || []).join(' ');
+  const figs = figuresIn(text).filter((f) => !sourceText.includes(f) && !sourceText.includes(f.replace(/,/g, '')));
+  const checks = (text.match(/\[CHECK:[^\]]*\]/gi) || []);
+  const timeOk = secs >= lo && secs <= hi;
+  const row = (cls, label, title, body) => `<div class="check"><span class="badge ${cls}">${label}</span><div><b>${title}</b>${body}</div></div>`;
+  $('#scriptChecks').innerHTML = `<h3 style="font-size:var(--t-lg);margin-bottom:4px">Checks</h3><p class="subtle" style="margin-bottom:6px">Instant, worked out from the text. No AI.</p>
+    ${!words ? '<p class="subtle">Checks appear once there is a script.</p>' : [
+      row(timeOk ? 'ok' : 'warn', timeOk ? 'On target' : secs < lo ? 'Short' : 'Long', `About ${secs} seconds`, `<span class="subtle">${words} words at a normal speaking pace. Target ${lo}–${hi}s.</span>`),
+      row(hookWords <= 15 ? 'ok' : 'warn', hookWords <= 15 ? 'Tight' : 'Long', `Hook: ${hookWords} words`, `<span class="subtle">${hookWords <= 15 ? 'Short enough to land in the first two seconds.' : 'Aim for 15 words or fewer so it lands before people scroll.'}</span>`),
+      row(figs.length ? 'bad' : 'ok', figs.length ? 'Check' : 'Clear', figs.length ? `${figs.length} ${figs.length === 1 ? 'figure' : 'figures'} not in your sources` : 'Figures match your sources', figs.length ? `<span class="subtle">${figs.map(esc).join(', ')}. Confirm each one before you film, or cut it.</span>` : '<span class="subtle">Every number and year in the script appears in the idea’s checked claims.</span>'),
+      checks.length ? row('warn', 'To do', `${checks.length} ${checks.length === 1 ? 'fact' : 'facts'} marked to verify`, `<span class="subtle">${checks.map(esc).join(' ')}</span>`) : '',
+    ].join('')}`;
+}
+
+async function scriptCall(body, btn, busy) {
+  $('#scriptError').innerHTML = '';
+  const it = planItem(currentScriptId);
+  const label = btn.textContent; btn.disabled = true; btn.textContent = busy;
+  try {
+    const res = await fetch('/api/script', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+      ...body, profile: profile(), length: $('#lengthPick').value,
+      style: scriptStyle === 'creator' ? { type: 'creator', creator: $('#styleCreator').value, description: $('#styleDesc').value } : { type: 'voice' },
+      idea: { title: it.title, hook: it.hook, angle: it.angle, outline: it.outline, claims: it.claims },
+    }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || `The server returned an error (${res.status}).`);
+    return data;
+  } catch (err) {
+    $('#scriptError').innerHTML = `<div class="error-box"><strong>That did not finish.</strong>${esc(err.message)}</div>`;
+    return null;
+  } finally { btn.disabled = false; btn.textContent = label; }
+}
+function applyScript(text, who, label) {
+  $('#scriptText').value = text; savePlanItem(currentScriptId, { script: text });
+  addVersion(who, label, text); renderChecks(); syncScriptControls();
+}
+$('#genDraft').onclick = async () => {
+  if (scriptStyle === 'creator' && !$('#styleDesc').value.trim()) { $('#scriptError').innerHTML = '<div class="error-box"><strong>Describe the creator’s style first.</strong>Lorekeeper does not watch their videos, so it only knows what you write about how they structure them.</div>'; return; }
+  const cur = $('#scriptText').value; if (cur.trim()) addVersion('You', 'Before new draft', cur);
+  const d = await scriptCall({ mode: 'draft' }, $('#genDraft'), 'Writing…');
+  if (!d) return;
+  const credit = d.style_credit ? `\n\n[Credit: ${d.style_credit}]` : '';
+  applyScript(d.script + credit, 'Lorekeeper', scriptStyle === 'creator' ? `First draft, inspired by ${$('#styleCreator').value || 'a creator'}` : 'First draft in your voice');
+  if (d.notes?.length) $('#coachOut').innerHTML = `<div class="panel panel-pad"><h3 style="font-size:var(--t-lg);margin-bottom:8px">Notes on this draft</h3><ul style="margin:0;padding-left:18px" class="muted">${d.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></div>`;
+  toast('Draft ready. Edit it directly or refine it.');
+};
+async function refine(instruction, label) {
+  const cur = $('#scriptText').value; addVersion('You', 'Before refining', cur);
+  const btn = $('#refineGo');
+  const d = await scriptCall({ mode: 'refine', script: cur, instruction }, btn, 'Refining…');
+  if (!d) return;
+  applyScript(d.script, 'Lorekeeper', label);
+  $('#coachOut').innerHTML = `<div class="panel panel-pad"><h3 style="font-size:var(--t-lg);margin-bottom:6px">What changed</h3><p class="muted">${esc(d.change_summary)}</p></div>`;
+  toast('Refined. Restore the earlier version any time.');
+}
+$$('#refineBox [data-refine]').forEach((b) => b.addEventListener('click', () => refine(b.dataset.refine, b.textContent)));
+$('#refineGo').onclick = () => { const v = $('#refineCustom').value.trim(); if (!v) { $('#refineCustom').focus(); return; } refine(v, `“${v.slice(0, 40)}”`); $('#refineCustom').value = ''; };
+$('#refineCustom').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#refineGo').click(); });
+
+function coachHtml(c) {
+  return `<div class="panel panel-pad"><div class="panel-head"><h3 style="font-size:var(--t-lg)">Coaching notes</h3><span class="subtle">${c.at ? ago(c.at) : ''}</span></div>
+    <p>${esc(c.overall)}</p>
+    ${c.hook ? `<p style="margin-top:10px"><b>Hook.</b> ${esc(c.hook)}</p>` : ''}
+    ${c.strengths?.length ? `<div style="margin-top:12px">${c.strengths.map((x) => `<div class="claim" style="margin-top:6px"><span class="badge ok">Works</span><span>${esc(x)}</span></div>`).join('')}</div>` : ''}
+    ${c.unsupported_claims?.length ? `<div style="margin-top:12px">${c.unsupported_claims.map((x) => `<div class="claim" style="margin-top:6px"><span class="badge bad">Unsupported</span><span><q>${esc(x.line)}</q> ${esc(x.problem)}</span></div>`).join('')}</div>` : ''}
+    ${c.lines?.length ? `<div style="margin-top:14px">${c.lines.map((x) => `<div class="coach-line"><q>${esc(x.line)}</q><div class="muted" style="margin-top:4px">${esc(x.issue)}</div><div style="margin-top:4px"><b>Try:</b> ${esc(x.direction)}</div></div>`).join('')}</div>` : ''}</div>`;
+}
+$('#getCoach').onclick = async () => {
+  const cur = $('#scriptText').value;
+  if (!cur.trim()) { $('#scriptError').innerHTML = '<div class="error-box"><strong>Write some of your script first.</strong>In Coach mode you write; Lorekeeper reads it and gives feedback.</div>'; return; }
+  addVersion('You', 'Sent for coaching', cur);
+  const d = await scriptCall({ mode: 'coach', script: cur }, $('#getCoach'), 'Reading your draft…');
+  if (!d) return;
+  const coach = { ...d, at: new Date().toISOString() }; delete coach.meta;
+  savePlanItem(currentScriptId, { coach });
+  $('#coachOut').innerHTML = coachHtml(coach);
+  toast('Feedback ready');
+};
 
 /* ---------- Decision log ---------- */
 let logFilter = 'all';
