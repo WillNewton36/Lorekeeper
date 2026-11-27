@@ -187,3 +187,21 @@ Claude proposed the flow (open a kept idea, draft, refine, instant checks, versi
 
 **12:30 · Test · Claude**
 New browser test (`dev/test-script.py`): keep an idea, open its script, draft, refine, switch to coach mode, get feedback, restore a version, reload. All passed with no errors; the card moved to Scripting and the script persisted. The checks correctly flagged "72%" and "2021" in a test draft because they came from a claim the search never found. Screenshot review found and fixed two bugs: the creator-style fields and the coaching button showed when they should be hidden (a CSS rule overrode the hidden attribute), and the date field on plan cards was squeezed to nothing. Existing interface and server tests still passed.
+
+## 27 November 2026: Part A submitted; bring back rejected ideas
+
+**15:50 · Deploy · Will**
+Part A (written strategy) completed and submitted. Slides extended to Monday 30 November, 7am.
+
+**21:08 · Decision · Will**
+Asked for rejected ideas to be recoverable.
+
+**21:10 · Change · Claude** (bring back rejected ideas)
+- **Bring back** button on every rejected idea (on the idea itself and in Decisions). The idea becomes undecided again and can be kept or rejected afresh.
+- **The decision log is now append-only.** Bringing an idea back adds a "Brought back" entry; the original rejection and its reason stay in the record. *Why:* the log is the evidence of the creator's judgement, so changing your mind should be visible, not erase the earlier decision.
+- From Decisions, a brought-back idea can be kept directly, which adds it to the Content plan.
+- Each new decision stores a copy of the idea, so it can be recovered even after its research run drops out of the saved history (the last 8 runs).
+- Decision counts now reflect each idea's current state (kept, rejected, brought back); new "Brought back" filter; brought-back entries included in the CSV export.
+
+**21:15 · Test · Claude**
+New browser test (`dev/test-restore.py`): reject with a reason, bring back from the idea card, reject again, bring back from Decisions, keep. The idea reached the Content plan, all five decisions stayed in the log in order, and the idea card showed it as kept. Full interface and script tests passed with no errors. Fixed "1 ideas" to "1 idea".

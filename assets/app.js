@@ -349,11 +349,29 @@ function claimSummary(claims) {
 }
 
 /* ---------- Decisions ---------- */
-function decisionFor(key) { return store.get('log', []).find((x) => x.key === key); }
+// The log is append-only: bringing an idea back adds a 'restored' entry rather than erasing the rejection.
+function latestFor(key, log = store.get('log', [])) { return log.filter((x) => x.key === key).at(-1); }
+function decisionFor(key) { const d = latestFor(key); return d && d.decision !== 'restored' ? d : undefined; }
+function snapshot(idea) { const { title, hook, angle, pillar, format, effort, outline, claims, attribution } = idea; return { title, hook, angle, pillar, format, effort, outline, claims, attribution }; }
+function findIdea(key) {
+  const entry = store.get('log', []).find((x) => x.key === key && x.idea);
+  if (entry) return { idea: entry.idea, kind: entry.kind };
+  for (const r of store.get('runs', [])) { const i = (r.data.ideas || []).findIndex((_, j) => `${r.id}-${j}` === key); if (i !== -1) return { idea: r.data.ideas[i], kind: 'research' }; }
+  for (const r of store.get('remixes', [])) if (`remix-${r.id}` === key) { const d = r.data; return { idea: { ...d.original_idea, claims: d.claims, attribution: d.attribution, pillar: 'Remix', format: d.structure?.format }, kind: 'remix' }; }
+  return null;
+}
+function restoreIdea(key) {
+  const d = decisionFor(key);
+  if (!d || d.decision !== 'reject') return;
+  const log = store.get('log', []);
+  log.push({ key, title: d.title, decision: 'restored', reason: '', kind: d.kind, at: new Date().toISOString() });
+  store.set('log', log);
+  toast('Brought back. Keep it or reject it again; your earlier reason stays in Decisions.');
+}
 function decide(key, idea, decision, reason, kind) {
   const log = store.get('log', []);
-  if (log.some((x) => x.key === key)) return;
-  log.push({ key, title: idea.title, decision, reason, kind, at: new Date().toISOString() });
+  if (decisionFor(key)) return;
+  log.push({ key, title: idea.title, decision, reason, kind, at: new Date().toISOString(), idea: snapshot(idea) });
   store.set('log', log);
   if (decision === 'keep') {
     const plan = store.get('plan', []);
@@ -365,7 +383,7 @@ function decide(key, idea, decision, reason, kind) {
 }
 function actionsHtml(key) {
   const d = decisionFor(key);
-  if (d) return `<span class="decision-note ${d.decision === 'keep' ? 'kept' : 'rejected'}">${d.decision === 'keep' ? '✓ Kept, in your plan' : '✕ Rejected'}${d.reason ? ` <small>“${esc(d.reason)}”</small>` : ''}</span>`;
+  if (d) return `<span class="decision-note ${d.decision === 'keep' ? 'kept' : 'rejected'}">${d.decision === 'keep' ? '✓ Kept, in your plan' : '✕ Rejected'}${d.reason ? ` <small>“${esc(d.reason)}”</small>` : ''}</span>${d.decision === 'reject' ? '<span class="spacer"></span><button class="btn secondary sm" data-act="restore">Bring back</button>' : ''}`;
   return `<button class="btn sm" data-act="keep">${ICON.plus} Keep</button>
     <button class="btn secondary sm" data-act="reject-open">Reject</button>
     <span class="spacer"></span>
@@ -385,6 +403,7 @@ function wireIdea(el, idea, kind) {
     if (act === 'keep') { decide(key, idea, 'keep', $('.reject-form input', el)?.value.trim() || '', kind); refreshIdea(el); }
     if (act === 'reject-open') { $('.reject-form', el).classList.add('open'); $('.reject-form input', el).focus(); }
     if (act === 'reject') { decide(key, idea, 'reject', $('.reject-form input', el).value.trim(), kind); refreshIdea(el); }
+    if (act === 'restore') { restoreIdea(key); refreshIdea(el); }
     if (act === 'copy') { try { await navigator.clipboard.writeText(ideaText(idea)); toast('Idea copied'); } catch { toast('Copy failed. Select the text instead.'); } }
   });
   $('.reject-form input', el)?.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('[data-act=reject]', el).click(); });
@@ -758,13 +777,29 @@ let logFilter = 'all';
 $$('#logFilter button').forEach((b) => b.addEventListener('click', () => { logFilter = b.dataset.f; $$('#logFilter button').forEach((x) => x.setAttribute('aria-pressed', x === b)); renderLog(); }));
 function renderLog() {
   const log = store.get('log', []);
-  const shown = log.filter((x) => logFilter === 'all' || x.decision === logFilter).slice().reverse();
-  const kept = log.filter((x) => x.decision === 'keep').length;
   if (!log.length) { $('#logOut').innerHTML = '<div class="empty" style="padding:8px 0"><h3>No decisions yet</h3><p>Keep or reject ideas and each choice is recorded here with your reason.</p></div>'; return; }
-  $('#logOut').innerHTML = `<p class="muted" style="margin-bottom:12px">${kept} kept and ${log.length - kept} rejected from ${log.length} ideas reviewed.</p>
-    <table class="log-table"><thead><tr><th>When</th><th>Idea</th><th>From</th><th>Decision</th><th>Your reason</th></tr></thead><tbody>
-    ${shown.map((x) => `<tr><td>${esc(new Date(x.at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}</td><td>${esc(x.title)}</td><td>${x.kind === 'remix' ? 'Remix' : 'Research'}</td><td>${x.decision === 'keep' ? '<span class="badge ok">Kept</span>' : '<span class="badge bad">Rejected</span>'}</td><td>${esc(x.reason) || '<span class="subtle">No reason given</span>'}</td></tr>`).join('')}</tbody></table>`;
+  const keys = [...new Set(log.map((x) => x.key))];
+  const now = keys.map((k) => latestFor(k, log).decision);
+  const kept = now.filter((d) => d === 'keep').length, rejected = now.filter((d) => d === 'reject').length, open = now.filter((d) => d === 'restored').length;
+  const shown = log.filter((x) => logFilter === 'all' || x.decision === logFilter).slice().reverse();
+  const BADGES = { keep: '<span class="badge ok">Kept</span>', reject: '<span class="badge bad">Rejected</span>', restored: '<span class="badge warn">Brought back</span>' };
+  const action = (x) => {
+    if (latestFor(x.key, log) !== x) return '';
+    if (x.decision === 'reject') return `<button class="btn secondary sm" data-restore="${esc(x.key)}">Bring back</button>`;
+    if (x.decision === 'restored' && findIdea(x.key)) return `<button class="btn sm" data-keep="${esc(x.key)}">Keep</button>`;
+    return '';
+  };
+  $('#logOut').innerHTML = `<p class="muted" style="margin-bottom:12px">${kept} kept, ${rejected} rejected${open ? ` and ${open} brought back for another look` : ''}, from ${keys.length} ${keys.length === 1 ? 'idea' : 'ideas'} reviewed.</p>
+    <table class="log-table"><thead><tr><th>When</th><th>Idea</th><th>From</th><th>Decision</th><th>Your reason</th><th></th></tr></thead><tbody>
+    ${shown.map((x) => `<tr><td>${esc(new Date(x.at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}</td><td>${esc(x.title)}</td><td>${x.kind === 'remix' ? 'Remix' : 'Research'}</td><td>${BADGES[x.decision] || ''}</td><td>${x.decision === 'restored' ? '<span class="subtle">Undecided again</span>' : esc(x.reason) || '<span class="subtle">No reason given</span>'}</td><td style="text-align:right">${action(x)}</td></tr>`).join('')}</tbody></table>`;
 }
+$('#logOut').addEventListener('click', (e) => {
+  const r = e.target.closest('[data-restore]');
+  if (r) { restoreIdea(r.dataset.restore); renderLog(); refreshAllIdeas(); return; }
+  const k = e.target.closest('[data-keep]');
+  if (k) { const f = findIdea(k.dataset.keep); if (f) { decide(k.dataset.keep, f.idea, 'keep', '', f.kind); renderLog(); refreshAllIdeas(); } }
+});
+function refreshAllIdeas() { $$('.idea[data-key]').forEach(refreshIdea); }
 $('#exportLog').onclick = () => download('lorekeeper-decisions.csv', [['when', 'idea', 'from', 'decision', 'reason'], ...store.get('log', []).map((x) => [x.at, x.title, x.kind, x.decision, x.reason])]);
 $('#clearLog').onclick = () => { if (!confirmInline('#clearLog', 'Click again to clear')) return; store.set('log', []); renderLog(); toast('Decision log cleared'); };
 
